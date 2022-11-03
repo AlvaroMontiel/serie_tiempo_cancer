@@ -6,13 +6,22 @@ output:
   pdf_document: default
 ---
 
+
+
 ## Carga de base de datos de incidencia.
 
 ```{r, carga de archivos}
 library(readr)
-bd <- read_delim("/Users/alvaro/Documents/Data_Science/R/proyecto_grado/cr5_18052022.txt", 
+if (Sys.info()[['sysname']] == "Mac"){
+  bd <- read_delim("/Users/alvaro/Documents/Data_Science/R/proyecto_grado/cr5_18052022.txt", 
     delim = "\t", escape_double = FALSE, 
     trim_ws = TRUE)
+} else {
+   bd <- read_delim("C:/Users/Usuario/Documents/R/proyecto de grado/cr5_18052022.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE) 
+}
+
 ```
 
 ## Variables 
@@ -56,7 +65,7 @@ C10: Código CIE10.
 PMSEC: Secuencia de tumores primarios.
 
 PMTOT: Número total de tumores primarios.
-
+.
 FUE1: Fuente.
 
 RUT: Rut del caso.
@@ -99,16 +108,14 @@ bd_pulmon$TOP_ <- "C34"
 ### Univariada categórica, Tráquea, bronquio, pulmón
 ```{r}
 ## SEXO
-table(bd_pulmon$SEXO)
-round(prop.table(table(bd_pulmon$SEXO))*100,2)
+table(factor(bd_pulmon$SEXO, levels=c(1,2), labels = c("H", "M")))
+round(prop.table(table(factor(bd_pulmon$SEXO, levels=c(1,2), labels = c("H", "M"))))*100,2)
 
 ## REGIÓN
-table(bd_pulmon$REGCOM)
-round(prop.table(table(bd_pulmon$REGCOM))*100,2)
-
-## TOPOGRAFÍA
-table(bd_pulmon$TOP)
-round(prop.table(table(bd_pulmon$TOP))*100,2)
+table(factor(bd_pulmon$REGCOM, levels=c("02101", "02201", "02301"), 
+      labels=c("Afta", "Calama", "Tocopilla")))
+round(prop.table(table(factor(bd_pulmon$REGCOM, levels=c("02101", "02201", "02301"), 
+      labels=c("Afta", "Calama", "Tocopilla"))))*100,2)
 
 ## MORFOLOGÍA
 table(bd_pulmon$MORF)
