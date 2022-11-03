@@ -10,9 +10,16 @@ output:
 
 ```{r, carga de archivos}
 library(readr)
-bd <- read_delim("/Users/alvaro/Documents/Data_Science/R/proyecto_grado/cr5_18052022.txt", 
+if (Sys.info()[['sysname']] == "Darwin"){
+  bd <- read_delim("/Users/alvaro/Documents/Data_Science/R/proyecto_grado/cr5_18052022.txt", 
     delim = "\t", escape_double = FALSE, 
     trim_ws = TRUE)
+} else {
+   bd <- read_delim("C:/Users/Usuario/Documents/R/proyecto de grado/cr5_18052022.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE) 
+}
+
 ```
 
 ## Variables 
@@ -35,17 +42,17 @@ TOP: Código topográfico del tumor en formato CIE-O.
 
 MORF: Código morfológico CIE-O.
 
+MORF_GRUPO: PULMÓN: 1=Neoplasias, SAI; 2=Neoplasias Epiteliales, SAI;
+3=Neoplasias de Células escamosas; 4=Adenocarcinomas; 5=Otras Morfologías
+
 COMP: Comportamiento del tumor: 3=Maligno.
 
 GRA: Grado de diferenciación del tumor: 1=Bien diferenciado; 2= Moderadamente Diferenciado;
 3=Poco Diferenciado; 4=Anaplásico; 5=Células T; 6=Células B; 7=Célula Nula;
 8=Células NK; 9=Desconocido.
 
-EXT: Grado de estensión del tumor: 0=In situ; 1=Localizado; 2=Regional; 
+EXT: Grado de extensión del tumor: 0=In situ; 1=Localizado; 2=Regional; 
 3=Metástasis; 9=Desconocido.
-
-LAT: Lateralidad: 1=Derecha; 2=Izquierda; 3=Bilateral; 4=No Corresponde;
-9=Desconocido.
 
 BASE: Base diagnóstico: 0=Solo Certificado de defunción; 1=Clínico; 
 2=Investigación clínica;  4=Bioquímica o Inmunología; 5=Citología;
@@ -91,55 +98,191 @@ bd_pulmon <- bd %>%
   filter(REGCOM=="02101" | REGCOM=="02201" | REGCOM=="02301" & COMP==3) %>%
   select(TUMOURID, NOCASO, FECNAC, EDAD, SEXO, REGCOM, FECDIAG,
          TOP, MORF, COMP, GRA, EXT, LAT, BASE, C10, PMSEC, PMTOT, FUE1, RUT)
+
+```
+
+AJUSTES A LA BASE DE DATOS
+```{r}
+## NUEVA VARIABLE PARA LA TOPOGRAFÍA DEL PULMON:  
+### TODAS LAS SUBLOCALIZACIONES AGRUPADAS COMO C34, SON MUY POCAS LAS LOCALIZACIONES
+### NO C349
 bd_pulmon$TOP_ <- "C34"
+
+## CORREGÍ UNA MORFOLOGÍA EN EL ORIGEN POR SER MUY RARA Y AL VOLVER A REVISAR LA BIOPSIA
+## EL CÓDIGO 8323 ERA MÁS APROPIADO.
+bd_pulmon <- bd_pulmon %>% mutate(MORF = ifelse(RUT == 5302873, 8323, MORF))
+
+## AGRUPACION DE LAS MORFOLOGIAS PARA BASE DE PULMÓN
+bd_pulmon <- bd_pulmon %>% mutate(MORF_GRUPO = case_when(
+  MORF == 8000 | MORF == 8001 | MORF == 8002 ~ 1,
+  MORF == 8010 | MORF == 8012 | MORF == 8013 | MORF == 8021 | MORF == 8032 |
+  MORF == 8033 | MORF == 8041 | MORF == 8042 | MORF == 8043 | MORF == 8044 |
+  MORF == 8045 | MORF == 8046 ~ 2,
+  MORF == 8050 | MORF == 8070 | MORF == 8071 | MORF == 8072 | MORF == 8073 | 
+  MORF == 8075 | MORF == 8076 ~ 3,
+  MORF == 8140 | MORF == 8211 | MORF == 8230 | MORF == 8240 | MORF == 8246 | 
+  MORF == 8250 | MORF == 8252 | MORF == 8260 | MORF == 8263 | MORF == 8310 | 
+  MORF == 8323 ~ 4,
+  MORF == 8430 | MORF == 8480 | MORF == 8481 | MORF == 8490 | MORF == 8550 | 
+  MORF == 8800 | MORF == 8990 | MORF == 9050 | MORF == 8090 ~ 5)
+  )
 ```
 
 
 ## Estadística descriptiva
-### Univariada categórica, Tráquea, bronquio, pulmón
+### Univariada categórica para tumores de Pulmón
 ```{r}
 ## SEXO
-table(bd_pulmon$SEXO)
-round(prop.table(table(bd_pulmon$SEXO))*100,2)
+table(factor(bd_pulmon$SEXO, levels=c(1,2), labels = c("H", "M")))
+round(prop.table(table(factor(bd_pulmon$SEXO, levels=c(1,2), labels = c("H", "M"))))*100,2)
 
-## REGIÓN
-table(bd_pulmon$REGCOM)
-round(prop.table(table(bd_pulmon$REGCOM))*100,2)
-
-## TOPOGRAFÍA
-table(bd_pulmon$TOP)
-round(prop.table(table(bd_pulmon$TOP))*100,2)
+## COMUNA
+table(factor(bd_pulmon$REGCOM, levels=c("02101", "02201", "02301"), 
+      labels=c("Afta", "Calama", "Tocopilla")))
+round(prop.table(table(factor(bd_pulmon$REGCOM, levels=c("02101", "02201", "02301"), 
+      labels=c("Afta", "Calama", "Tocopilla"))))*100,2)
 
 ## MORFOLOGÍA
-table(bd_pulmon$MORF)
-round(prop.table(table(bd_pulmon$MORF))*100,2)
+table(factor(bd_pulmon$MORF_GRUPO, levels = c(1,2,3,4,5), labels = c(
+  "Neoplasias, SAI", "Neoplasias Epiteliales, SAI", "Neoplasias de células escamosas", "Adenocarcinomas", "Otras morfologías")))
+
+round(
+  prop.table(
+    table(
+    factor(
+      bd_pulmon$MORF_GRUPO, levels = c(1,2,3,4,5), labels = c(
+        "Neoplasias, SAI", "Neoplasias Epiteliales, SAI", 
+        "Neoplasias de células escamosas", "Adenocarcinomas", 
+        "Otras morfologías"))))*100,2)
 
 ## GRADO DE DIFERENCIACIÓN
-table(bd_pulmon$GRA)
-round(prop.table(table(bd_pulmon$GRA))*100,2)
+table(factor(bd_pulmon$GRA, levels = c(1,2,3,4,9), labels = 
+               c("Bien Diferenciado","Moderadamente Diferenciados",
+                 "Poco Diferenciado","Anaplásico","Desconocido")))
+
+round(prop.table(table(factor(
+ bd_pulmon$GRA, levels = c(1,2,3,4,9), labels = 
+               c("Bien Diferenciado","Moderadamente Diferenciados",
+                 "Poco Diferenciado","Anaplásico","Desconocido") 
+  )))*100,2)
 
 ## EXTENSIÓN
-table(bd_pulmon$EXT)
-round(prop.table(table(bd_pulmon$EXT))*100,2)
+table(factor(bd_pulmon$EXT, levels = c(1,2,3,9), labels = c(
+  "Localizado","Regional","Metástasis","Desconocido"
+)))
+round(prop.table(table(factor(bd_pulmon$EXT, levels = c(1,2,3,9),
+                              labels=c(                                "Localizado","Regional","Metástasis","Desconocido"  
+                              )
+                              )))*100,2)
 
-## LATERALIDAD
-table(bd_pulmon$LAT)
-round(prop.table(table(bd_pulmon$LAT))*100,2)
 
 ## BASE DIAGNÓSTICO
-table(bd_pulmon$BASE)
-round(prop.table(table(bd_pulmon$BASE))*100,2)
+table(factor(bd_pulmon$BASE, levels = c(0,1,2,5,6,7),
+             labels = c("Solo DCO","Clínica","Investigación Clínica","Citología","Histología de MTS","Histología de sitio primario")
+             ))
+round(prop.table(table(factor(bd_pulmon$BASE, levels = c(0,1,2,
+                                                         5,6,7), 
+                              labels = c(
+                                "Solo DCO","Clínica","Investigación Clínica","Citología","Histología de MTS","Histología de sitio primario"
+                              ))
+                              ))*100,2)
 
-## FUENTE
-table(bd_pulmon$FUE1)
-round(prop.table(table(bd_pulmon$FUE1))*100,2)
+## PRIMARIO MÚLTIPLES
+### HAY 134 NA, TRATAR DE ARREGLAR EN LA BASE DE CR5
+addmargins(table(bd_pulmon$PMTOT))
 
+```
+
+
+
+## Estadística descriptiva
+### Univariada cuantitativa, Pulmón
+```{r}
+bd_pulmon %>% summarise(
+  Mínimo = min(EDAD),
+  Rango = range(EDAD),
+  Qu_25 = quantile(EDAD, prob=c(0.25)),
+  Qu_50 = quantile(EDAD, prob=c(0.5)),
+  Qu_75 = quantile(EDAD, prob=c(0.75)),
+  Media = round(mean(EDAD),4),
+  Mediana = median(EDAD),
+  Varianza = round(var(EDAD),4),
+  Desv_Estándar = round(sd(EDAD),4),
+  CV = round(sd(EDAD)/mean(EDAD)*100,4),
+  Máximo = max(EDAD)
+)
 ```
 
 ```{r}
+hist(bd_pulmon$EDAD)
+plot(density(bd_pulmon$EDAD),
+     lwd=3,
+     col="blue3",
+     xlim = c(15, 100),
+     main="xxxx",
+     las=1,
+     xlab="Edad",
+     ylab="densidad")
+
+edades <- split(bd_pulmon$EDAD, bd_pulmon$SEXO)
+plot(density(edades$`1`),
+     lwd=3,
+     col="blue3",
+     xlim = c(15, 100),
+     main="por sexo",
+     las=1,
+     xlab="Edad",
+     ylab="densidad")
+lines(density(edades$`2`), lwd =3,
+      col="deeppink")
+legend('topleft', legend=c("H", "M"),
+       lwd=3,
+       col=c('blue', 'deeppink'), bty='n')
 
 
 ```
+
+
+
+```{r}
+qqnorm(bd_pulmon$EDAD, pch=20, main="QQ Edad")
+qqline(bd_pulmon$EDAD)
+
+qqnorm(edades$`1`, pch=20, main="QQ edad hombres")
+qqline(edades$`1`)
+
+
+qqnorm(edades$`2`, pch=20, main="QQ edad mujeres")
+qqline(edades$`2`)
+```
+
+
+
+
+
+```{r}
+# H0 = la muestra proviene de una población normal
+shapiro.test(bd_pulmon$EDAD)
+shapiro.test(edades$`1`)
+shapiro.test(edades$`2`)
+
+```
+
+
+
+```{r}
+by_fecdiag <- bd_pulmon %>% group_by(FECDIAG)
+conteo <- by_fecdiag %>% tally()
+
+plot(conteo$FECDIAG, conteo$n)
+```
+
+
+
+
+
+
+
 
 
 
