@@ -256,9 +256,10 @@ shapiro.test(bd_pulmon$EDAD)
 ## Estadística descriptiva
 ### Univariada serie de tiempo pulmón
 
+#### Ajuste de la variable FECDIAG_ (tipo DATE) 
 ```{r}
 ## Fechas
-
+library(tidyverse)
 new_date <- ""
 contador <- 1 
 for(i in bd_pulmon$FECDIAG){
@@ -271,28 +272,51 @@ new_date <- as.Date(new_date, "%Y-%m-%d")
 bd_pulmon$FECDIAG_ <- new_date
 ```
 
+
+### Ajuste de la variable de conteo (agrupada por mes), y confección de gráfico de número de nuevos casos en función del tiempo (sin ningún ajuste!!)
 ```{r}
-modelo1 
-by_fecdiag <- bd_pulmon %>% group_by(FECDIAG_)
-conteo <- by_fecdiag %>% tally()
-x <- (conteo$n)
-a <- sprintf("%1.3f", x)
-b <- noquote(sprintf("%1.1f",x))
+contador = 1
+new_date_2 =""
+for(i in bd_pulmon$FECDIAG){
+  new_date_2[[contador]] <- str_c(str_sub(i, 1, 4),"-",str_sub(i, -4,-3))
+  contador <- contador +  1
+}
+bd_pulmon$MESAÑO <- new_date_2
 
+by_mesdiag <- bd_pulmon %>% group_by(MESAÑO)
+conteo_mes <- by_mesdiag %>% tally()
 
-library(ggplot2)
+if (nrow(conteo_mes) < 156) {
+  print("Hay meses sin nuevos casos")
+} else (
+  print("Todos los meses con casos")
+)
 
-plot_1 <- ggplot(conteo, aes(x = FECDIAG_, y=b))+geom_line()
-plot_1
-
-
-names(conteo)
-library(tidyverse)
 library(lubridate)
-casos_nuevos_ts <- ts(conteo[,2], start=2003, frequency=365)
+casos_nuevos_mes <- ts(conteo_mes[,2], start=2003, frequency=12)
+plot(casos_nuevos_mes, 
+     ylim= c(0, 40))
 
-class(as.double(conteo$n))
+#ggplot(data = conteo_mes, aes(x = as.Date(MESAÑO,"%Y-%m"), y = n)) 
+#+ geom_line(color = "#00AFBB", size = 2)
+
+
+
 ```
+
+
+```{r}
+modelo1 <- glm(conteo_mes$n~1, family="poisson")
+summary(modelo1)
+```
+
+
+
+
+
+
+
+
 
 
 ```{r}
