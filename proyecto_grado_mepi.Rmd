@@ -3,7 +3,8 @@ title: "Serie de tiempo, cancer de pulmon, piel y vejiga en Antofagasta"
 output:
   html_document:
     df_print: paged
-  pdf_document: default
+    pdf_document: default
+    css: ["style-1.css", "style-2.css"]
 ---
 
 ```{r, carga de archivos, echo=FALSE, include=FALSE}
@@ -20,80 +21,113 @@ if (Sys.info()[['sysname']] == "Darwin"){
 
 ```
 
-
 Variables en la base de datos.
 
+-   TUMOURID: Identificación del tumor.
 
-* TUMOURID: Identificación del tumor.
+-   NOCASO: Número del caso (1 caso puede tener uno o más tumores).
 
-* NOCASO: Número del caso (1 caso puede tener uno o más tumores).
+-   FECNAC: Fecha nacimiento en formato YYYYMMDD (variable numérica).
 
-* FECNAC: Fecha nacimiento en formato YYYYMMDD (variable numérica).
+-   EDAD: Edad en años a la fecha del diagnóstico.
 
-* EDAD: Edad en años a la fecha del diagnóstico.
+-   SEXO:
 
-+ SEXO: 
-  * 1=Hombre, 
-  * 2=Mujeres.
+    -   1=Hombre,
 
+    -   2=Mujeres.
 
-+ REGCOM: Código comunas: 
-  * 2101=Antofagasta; 
-  * 2201=Calama; 
-  * 2301=Tocopilla.
+-   REGCOM: Código comunas:
 
-* FECDIAG: Fecha de diagnóstico del tumor en formato YYYYMMDD (variable numérica),
-"20030101 - 20151231".
+    -   2101=Antofagasta;
 
-* TOP: Código topográfico del tumor en formato CIE-O.
+    -   2201=Calama;
 
-* MORF: Código morfológico CIE-O.
+    -   2301=Tocopilla.
 
-+ MORF_GRUPO (PULMON): 
-    * 1=Neoplasias, SAI; 
-    * 2=Neoplasias Epiteliales, SAI;
-    * 3=Neoplasias de Células escamosas; 
-    * 4=Adenocarcinomas; 
-    * 5=Otras Morfologías
+-   FECDIAG: Fecha de diagnóstico del tumor en formato YYYYMMDD (variable numérica), "20030101 - 20151231".
 
-+ COMP: Comportamiento del tumor: 
-    * 3=Maligno.
+-   TOP: Código topográfico del tumor en formato CIE-O.
 
+-   MORF: Código morfológico CIE-O.
 
-* GRA: Grado de diferenciación del tumor: 
-    * 1=Bien diferenciado; 
-    * 2= Moderadamente Diferenciado;
-    * 3=Poco Diferenciado; 
-    * 4=Anaplásico; 
-    * 5=Células T; 
-    * 6=Células B; 
-    * 7=Célula Nula;
-    * 8=Células NK; 
-    * 9=Desconocido.
+-   MORF_GRUPO (PULMON):
 
-+ EXT: Grado de extensión del tumor: 
-    * 0=In situ; 
-    * 1=Localizado; 
-    * 2=Regional; 
-    * 3=Metástasis; 
-    * 9=Desconocido.
+    -   1=Neoplasias, SAI;
 
-* BASE: Base diagnóstico: 0=Solo Certificado de defunción; 1=Clínico; 
-2=Investigación clínica;  4=Bioquímica o Inmunología; 5=Citología;
-6=Histología de metástasis; 7=Histología de sitio primario; 9=Desconocido.
+    -   2=Neoplasias Epiteliales, SAI;
 
-* C10: Código CIE10.
+    -   3=Neoplasias de Células escamosas;
 
-* PMSEC: Secuencia de tumores primarios.
+    -   4=Adenocarcinomas;
 
-* PMTOT: Número total de tumores primarios.
+    -   5=Otras Morfologías
 
-* FUE1: Fuente.
+-   COMP: Comportamiento del tumor:
 
-* RUT: Rut del caso.
+    -   3=Maligno.
 
+-   GRA: Grado de diferenciación del tumor:
 
-```{r, Recorte de las variables}
+    -   1=Bien diferenciado;
+
+    -   2= Moderadamente Diferenciado;
+
+    -   3=Poco Diferenciado;
+
+    -   4=Anaplásico;
+
+    -   5=Células T;
+
+    -   6=Células B;
+
+    -   7=Célula Nula;
+
+    -   8=Células NK;
+
+    -   9=Desconocido.
+
+-   EXT: Grado de extensión del tumor:
+
+    -   0=In situ;
+
+    -   1=Localizado;
+
+    -   2=Regional;
+
+    -   3=Metástasis;
+
+    -   9=Desconocido.
+
+-   BASE: Base diagnóstico:
+
+    -   0=Solo Certificado de defunción;
+
+    -   1=Clínico;
+
+    -   2=Investigación clínica;
+
+    -   4=Bioquímica o Inmunología;
+
+    -   5=Citología;
+
+    -   6=Histología de metástasis;
+
+    -   7=Histología de sitio primario;
+
+    -   9=Desconocido.
+
+-   C10: Código CIE10.
+
+-   PMSEC: Secuencia de tumores primarios.
+
+-   PMTOT: Número total de tumores primarios.
+
+-   FUE1: Fuente.
+
+-   RUT: Rut del caso.
+
+```{r, Recorte de las variables, echo=FALSE, include=FALSE}
 ## Carga del paquete dplyr
 library(dplyr)
 
@@ -103,7 +137,7 @@ library(dplyr)
 bd_piel <- bd %>% 
   filter(TOP==440 | TOP==441 | TOP==442 | TOP==443 | TOP==444 | TOP==445 | 
            TOP==446 | TOP==447 | TOP==448 | TOP==449) %>%
-  filter(REGCOM=="02101" | REGCOM=="02201" | REGCOM=="02301" & COMP==3) %>%
+  #filter(REGCOM=="02101" | REGCOM=="02201" | REGCOM=="02301" & COMP==3) %>%
   select(TUMOURID, NOCASO, FECNAC, EDAD, SEXO, REGCOM, FECDIAG,
          TOP, MORF, COMP, GRA, EXT, LAT, BASE, C10, PMSEC, PMTOT, FUE1, RUT)
 
@@ -111,7 +145,7 @@ bd_piel <- bd %>%
 bd_vejiga <- bd %>% 
   filter(TOP==670 | TOP==671 | TOP==672 | TOP==673 | TOP==674 | TOP==675 | 
            TOP==676 | TOP==677 | TOP==678 | TOP==679) %>%
-  filter(REGCOM=="02101" | REGCOM=="02201" | REGCOM=="02301" & COMP==3) %>%
+  #filter(REGCOM=="02101" | REGCOM=="02201" | REGCOM=="02301" & COMP==3) %>%
   select(TUMOURID, NOCASO, FECNAC, EDAD, SEXO, REGCOM, FECDIAG,
          TOP, MORF, COMP, GRA, EXT, LAT, BASE, C10, PMSEC, PMTOT, FUE1, RUT)
 
@@ -119,14 +153,14 @@ bd_vejiga <- bd %>%
 bd_pulmon <- bd %>% 
   filter(TOP==340 | TOP==341 | TOP==342 | TOP==343 | TOP==344 | TOP==345 | 
            TOP==346 | TOP==347 | TOP==348 | TOP==349) %>% 
-  filter(REGCOM=="02101" | REGCOM=="02201" | REGCOM=="02301" & COMP==3) %>%
+  
+  #filter(REGCOM=="02101" | REGCOM=="02201" | REGCOM=="02301" & COMP==3) %>%
   select(TUMOURID, NOCASO, FECNAC, EDAD, SEXO, REGCOM, FECDIAG,
          TOP, MORF, COMP, GRA, EXT, LAT, BASE, C10, PMSEC, PMTOT, FUE1, RUT)
 
 ```
 
-AJUSTES A LA BASE DE DATOS
-```{r}
+```{r, Ajuste a la base de datos, echo=FALSE, include=FALSE }
 ## NUEVA VARIABLE PARA LA TOPOGRAFÍA DEL PULMON:  
 ### TODAS LAS SUBLOCALIZACIONES AGRUPADAS COMO C34, SON MUY POCAS LAS LOCALIZACIONES
 ### NO C349
@@ -152,18 +186,29 @@ bd_pulmon <- bd_pulmon %>% mutate(MORF_GRUPO = case_when(
   )
 ```
 
+# Estadística descriptiva
 
-## Estadística descriptiva
-### Univariada categórica para tumores de Pulmón
-```{r}
+## Univariada categórica para tumores de Pulmón
+
+
+```{r, descriptiva_categorica univariada}
 ## SEXO
-table(factor(bd_pulmon$SEXO, levels=c(1,2), labels = c("H", "M")))
-round(prop.table(table(factor(bd_pulmon$SEXO, levels=c(1,2), labels = c("H", "M"))))*100,2)
+table(factor(bd_pulmon$SEXO, levels=c(1,2), labels = c("Hombres", "Mujeres")))
+round(prop.table(table(factor(bd_pulmon$SEXO, levels=c(1,2), labels = c("Hombres", "Mujeres"))))*100,2)
 
 
 ## REGIÓN
+tabla_region = table(factor(bd_pulmon$REGCOM, levels=c("02101", "02102", "02103", "02104", 
+                                        "02201", "02202", "02203",
+                                        "02301", "02302"), 
+      labels=c("Afta", "Mejillones", "Sierra Gorda", "Taltal", 
+               "Calama", "Ollagüe", "San Pedro de Atacama", 
+               "Tocopilla", "MAría Elena")))
 
-## PENDIENTE !!!!!
+addmargins(tabla_region)
+
+round(prop.table(tabla_region),2)*100
+
 
 ## COMUNA
 table(factor(bd_pulmon$REGCOM, levels=c("02101", "02201", "02301"), 
@@ -222,12 +267,11 @@ addmargins(table(bd_pulmon$PMTOT))
 
 ```
 
+## Univariada cuantitativa, Pulmón
 
+### EDAD
 
-## Estadística descriptiva
-### Univariada cuantitativa, Pulmón
-#### EDAD
-```{r}
+```{r, descriptiva_cuanti}
 bd_pulmon %>% summarise(
   Mínimo = min(EDAD),
   Máximo = max(EDAD),
@@ -243,7 +287,7 @@ bd_pulmon %>% summarise(
 )
 ```
 
-```{r}
+```{r, histograma_edad}
 hist(bd_pulmon$EDAD)
 
 plot(density(bd_pulmon$EDAD),
@@ -256,30 +300,36 @@ plot(density(bd_pulmon$EDAD),
      ylab="densidad")
 ```
 
-
-
-```{r}
+```{r, normal_qq_edad}
 qqnorm(bd_pulmon$EDAD, pch=20, main="QQ Edad")
 qqline(bd_pulmon$EDAD)
 
 ```
 
-
-
-
-
-```{r}
+```{r, shapiro_test_edad}
 # H0 = la muestra proviene de una población normal
 shapiro.test(bd_pulmon$EDAD)
 
 ```
 
 
-## Estadística descriptiva
-### Univariada serie de tiempo pulmón
+## Bivariada 
 
-#### Ajuste de la variable FECDIAG_ (tipo DATE) 
-```{r}
+
+# Serie de tiempo
+
+## ajuste de tasa anual
+
+
+
+
+
+
+
+
+## Estadística descriptiva - Univariada serie de tiempo pulmón
+
+```{r,Ajuste_FECDIAG_ (tipo DATE), echo=FALSE, include=FALSE }
 ## Fechas
 library(tidyverse)
 new_date <- ""
@@ -294,23 +344,24 @@ new_date <- as.Date(new_date, "%Y-%m-%d")
 bd_pulmon$FECDIAG_ <- new_date
 ```
 
+```{r variables_to_plot, echo=FALSE, include=FALSE }
+#Ajuste de la variable de conteo (agrupada por mes), análisis descriptivo de la variable número de casos por mes y confección de gráfico de número de nuevos casos en función del tiempo (sin ningún ajuste!!)
 
-### Ajuste de la variable de conteo (agrupada por mes), análisis descriptivo de la variable número de casos por mes y confección de gráfico de número de nuevos casos en función del tiempo (sin ningún ajuste!!)
-
-```{r}
 ## Grafico numero de casos en el tiempo
-
 bd_pulmon$YEAR <- str_sub(bd_pulmon$FECDIAG_, 1,4)
 bd_pulmon$MONTH <- str_sub(bd_pulmon$FECDIAG_, 6,7)
 a <- bd_pulmon %>% group_by(YEAR, MONTH) %>% tally()
 time_serie <- ts(a[,3], start=2003, frequency=12 )
-
-plot(time_serie, ylim=c(0,40))
 ```
 
+```{r, plot_casos_mes_1}
+## Casos de cancer de pulmon 2003-2015
 
+plot(time_serie, ylim=c(0,40),
+     main="Número de casos, cáncer de pulmon mensuales 2003-2015")
+```
 
-```{r}
+```{r, plot_casos_mes_2, echo=FALSE, include=FALSE}
 ## Otra forma de obtener el grafico
 
 library(lubridate)
@@ -337,13 +388,11 @@ plot(casos_nuevos_mes,
 
 #ggplot(data = conteo_mes, aes(x = as.Date(MESAÑO,"%Y-%m"), y = n)) 
 #+ geom_line(color = "#00AFBB", size = 2)
-
-
-
 ```
 
+```{r,descriptiva_casos_mes}
+## Descriptive analysis of lung cancer cases by month 
 
-```{r}
 conteo_mes %>% summarise(
   Mínimo = min(n),
   Máximo = max(n),
@@ -359,9 +408,9 @@ conteo_mes %>% summarise(
 )
 ```
 
-```{r}
+```{r tasa_to_scaterplot, include=FALSE, echo=FALSE}
 ### Scaterplot 
-### Computar tasas ajustadas
+### Computar tasas ajustadas, usé la población INE para cada año calendario
 a <- a %>% mutate(population = case_when(
   YEAR == 2003 ~ 510045,
   YEAR == 2004 ~ 517333,
@@ -382,10 +431,11 @@ a$rate <- with(a, n/population*10^5)
 
 ```
 
-
 ```{r}
+#summary de la Data para confeccionar el scaterplot
 summary(a)
 
+## scaterplot - tasa mensual 2003-2015
 plot(a$rate,type="n",ylim=c(00,6),xlab="Year", ylab="Rate x 100.000",
      bty="l",xaxt="n")
 points(a$rate,cex=0.7)
@@ -394,7 +444,7 @@ axis(1,at=0:12*12+6,tick=F,labels=2003:2015)
 title("Pulmon 2003-2015")
 ```
 
-```{r}
+```{r, include=F, echo=F}
 #Poisson with the standardised population as an offset
 modelo1 <- glm(n ~ offset(log(population)), family="poisson", a)
 summary(modelo1)
@@ -420,16 +470,7 @@ lines((1:156),pred1,col=2)
 
 ```
 
-
-
-
-
-
-
-
-
-
-```{r}
+```{r, include=F, echo=F}
 edades <- split(bd_pulmon$EDAD, bd_pulmon$SEXO)
 plot(density(edades$`1`),
      lwd=3,
@@ -459,8 +500,3 @@ shapiro.test(edades$`1`)
 shapiro.test(edades$`2`)
 
 ```
-
-
-
-
-
