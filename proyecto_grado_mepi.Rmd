@@ -1,16 +1,12 @@
 ---
-title: "Proyecto grado Álvaro Montiel"
+title: "Serie de tiempo, cancer de pulmon, piel y vejiga en Antofagasta"
 output:
   html_document:
     df_print: paged
   pdf_document: default
 ---
 
-
-
-## Carga de base de datos de incidencia.
-
-```{r, carga de archivos}
+```{r, carga de archivos, echo=FALSE, include=FALSE}
 library(readr)
 if (Sys.info()[['sysname']] == "Darwin"){
   bd <- read_delim("/Users/alvaro/Documents/Data_Science/R/proyecto_grado/cr5_18052022.txt", 
@@ -24,51 +20,77 @@ if (Sys.info()[['sysname']] == "Darwin"){
 
 ```
 
-## Variables 
-TUMOURID: Identificación del tumor.
 
-NOCASO: Número del caso (1 caso puede tener uno o más tumores).
+Variables en la base de datos.
 
-FECNAC: Fecha nacimiento en formato YYYYMMDD (variable numérica).
 
-EDAD: Edad en años a la fecha del diagnóstico.
+* TUMOURID: Identificación del tumor.
 
-SEXO: 1=Hombre, 2=Mujeres.
+* NOCASO: Número del caso (1 caso puede tener uno o más tumores).
 
-REGCOM: Código comunas: 2101=Antofagasta; 2201=Calama; 2301=Tocopilla.
+* FECNAC: Fecha nacimiento en formato YYYYMMDD (variable numérica).
 
-FECDIAG: Fecha de diagnóstico del tumor en formato YYYYMMDD (variable numérica),
+* EDAD: Edad en años a la fecha del diagnóstico.
+
++ SEXO: 
+  * 1=Hombre, 
+  * 2=Mujeres.
+
+
++ REGCOM: Código comunas: 
+  * 2101=Antofagasta; 
+  * 2201=Calama; 
+  * 2301=Tocopilla.
+
+* FECDIAG: Fecha de diagnóstico del tumor en formato YYYYMMDD (variable numérica),
 "20030101 - 20151231".
 
-TOP: Código topográfico del tumor en formato CIE-O.
+* TOP: Código topográfico del tumor en formato CIE-O.
 
-MORF: Código morfológico CIE-O.
+* MORF: Código morfológico CIE-O.
 
-MORF_GRUPO: PULMÓN: 1=Neoplasias, SAI; 2=Neoplasias Epiteliales, SAI;
-3=Neoplasias de Células escamosas; 4=Adenocarcinomas; 5=Otras Morfologías
++ MORF_GRUPO (PULMON): 
+    * 1=Neoplasias, SAI; 
+    * 2=Neoplasias Epiteliales, SAI;
+    * 3=Neoplasias de Células escamosas; 
+    * 4=Adenocarcinomas; 
+    * 5=Otras Morfologías
 
-COMP: Comportamiento del tumor: 3=Maligno.
++ COMP: Comportamiento del tumor: 
+    * 3=Maligno.
 
-GRA: Grado de diferenciación del tumor: 1=Bien diferenciado; 2= Moderadamente Diferenciado;
-3=Poco Diferenciado; 4=Anaplásico; 5=Células T; 6=Células B; 7=Célula Nula;
-8=Células NK; 9=Desconocido.
 
-EXT: Grado de extensión del tumor: 0=In situ; 1=Localizado; 2=Regional; 
-3=Metástasis; 9=Desconocido.
+* GRA: Grado de diferenciación del tumor: 
+    * 1=Bien diferenciado; 
+    * 2= Moderadamente Diferenciado;
+    * 3=Poco Diferenciado; 
+    * 4=Anaplásico; 
+    * 5=Células T; 
+    * 6=Células B; 
+    * 7=Célula Nula;
+    * 8=Células NK; 
+    * 9=Desconocido.
 
-BASE: Base diagnóstico: 0=Solo Certificado de defunción; 1=Clínico; 
++ EXT: Grado de extensión del tumor: 
+    * 0=In situ; 
+    * 1=Localizado; 
+    * 2=Regional; 
+    * 3=Metástasis; 
+    * 9=Desconocido.
+
+* BASE: Base diagnóstico: 0=Solo Certificado de defunción; 1=Clínico; 
 2=Investigación clínica;  4=Bioquímica o Inmunología; 5=Citología;
 6=Histología de metástasis; 7=Histología de sitio primario; 9=Desconocido.
 
-C10: Código CIE10.
+* C10: Código CIE10.
 
-PMSEC: Secuencia de tumores primarios.
+* PMSEC: Secuencia de tumores primarios.
 
-PMTOT: Número total de tumores primarios.
-.
-FUE1: Fuente.
+* PMTOT: Número total de tumores primarios.
 
-RUT: Rut del caso.
+* FUE1: Fuente.
+
+* RUT: Rut del caso.
 
 
 ```{r, Recorte de las variables}
@@ -139,7 +161,7 @@ table(factor(bd_pulmon$SEXO, levels=c(1,2), labels = c("H", "M")))
 round(prop.table(table(factor(bd_pulmon$SEXO, levels=c(1,2), labels = c("H", "M"))))*100,2)
 
 
-## REGIÓn
+## REGIÓN
 
 ## PENDIENTE !!!!!
 
@@ -204,6 +226,7 @@ addmargins(table(bd_pulmon$PMTOT))
 
 ## Estadística descriptiva
 ### Univariada cuantitativa, Pulmón
+#### EDAD
 ```{r}
 bd_pulmon %>% summarise(
   Mínimo = min(EDAD),
@@ -252,7 +275,6 @@ shapiro.test(bd_pulmon$EDAD)
 ```
 
 
-
 ## Estadística descriptiva
 ### Univariada serie de tiempo pulmón
 
@@ -273,8 +295,25 @@ bd_pulmon$FECDIAG_ <- new_date
 ```
 
 
-### Ajuste de la variable de conteo (agrupada por mes), y confección de gráfico de número de nuevos casos en función del tiempo (sin ningún ajuste!!)
+### Ajuste de la variable de conteo (agrupada por mes), análisis descriptivo de la variable número de casos por mes y confección de gráfico de número de nuevos casos en función del tiempo (sin ningún ajuste!!)
+
 ```{r}
+## Grafico numero de casos en el tiempo
+
+bd_pulmon$YEAR <- str_sub(bd_pulmon$FECDIAG_, 1,4)
+bd_pulmon$MONTH <- str_sub(bd_pulmon$FECDIAG_, 6,7)
+a <- bd_pulmon %>% group_by(YEAR, MONTH) %>% tally()
+time_serie <- ts(a[,3], start=2003, frequency=12 )
+
+plot(time_serie, ylim=c(0,40))
+```
+
+
+
+```{r}
+## Otra forma de obtener el grafico
+
+library(lubridate)
 contador = 1
 new_date_2 =""
 for(i in bd_pulmon$FECDIAG){
@@ -292,7 +331,6 @@ if (nrow(conteo_mes) < 156) {
   print("Todos los meses con casos")
 )
 
-library(lubridate)
 casos_nuevos_mes <- ts(conteo_mes[,2], start=2003, frequency=12)
 plot(casos_nuevos_mes, 
      ylim= c(0, 40))
@@ -306,8 +344,80 @@ plot(casos_nuevos_mes,
 
 
 ```{r}
-modelo1 <- glm(conteo_mes$n~1, family="poisson")
+conteo_mes %>% summarise(
+  Mínimo = min(n),
+  Máximo = max(n),
+  Rango = max(n)-min(n),
+  Qu_25 = quantile(n, prob=c(0.25)),
+  Qu_50 = quantile(n, prob=c(0.5)),
+  Qu_75 = quantile(n, prob=c(0.75)),
+  Media = round(mean(n),4),
+  Mediana = median(n),
+  Varianza = round(var(n),4),
+  Desv_Estándar = round(sd(n),4),
+  CV = round(sd(n)/mean(n)*100,4)
+)
+```
+
+```{r}
+### Scaterplot 
+### Computar tasas ajustadas
+a <- a %>% mutate(population = case_when(
+  YEAR == 2003 ~ 510045,
+  YEAR == 2004 ~ 517333,
+  YEAR == 2005 ~ 524422,
+  YEAR == 2006 ~ 531553,
+  YEAR == 2007 ~ 539071,
+  YEAR == 2008 ~ 546939,
+  YEAR == 2009 ~ 554646,
+  YEAR == 2010 ~ 562331,
+  YEAR == 2011 ~ 570307,
+  YEAR == 2012 ~ 578137,
+  YEAR == 2013 ~ 586685,
+  YEAR == 2014 ~ 596155,
+  YEAR == 2015 ~ 604877
+))
+
+a$rate <- with(a, n/population*10^5)
+
+```
+
+
+```{r}
+summary(a)
+
+plot(a$rate,type="n",ylim=c(00,6),xlab="Year", ylab="Rate x 100.000",
+     bty="l",xaxt="n")
+points(a$rate,cex=0.7)
+axis(1,at=0:13*12,labels=F)
+axis(1,at=0:12*12+6,tick=F,labels=2003:2015)
+title("Pulmon 2003-2015")
+```
+
+```{r}
+#Poisson with the standardised population as an offset
+modelo1 <- glm(n ~ offset(log(population)), family="poisson", a)
 summary(modelo1)
+summary(modelo1)$dispersion
+#round(ci.lin(modelo1,Exp=T),3)
+
+# create a new dataframe with 0.1 time units to improve the graph
+datanew <- data.frame(stdpop=mean(a$population),
+                      time= 1:600/10,month=rep(1:120/10,5))
+
+# We generate predicted values based on the model in order to create a plot
+pred1 <- predict(modelo1,type="response",a)
+
+#This can then be plotted along with a scatter graph (see above)
+plot(a$rate,type="n",ylim=c(00,6),xlab="Year", ylab="Rate x 100.000",
+     bty="l",xaxt="n")
+points(a$rate,cex=0.7)
+axis(1,at=0:13*12,labels=F)
+axis(1,at=0:12*12+6,tick=F,labels=2003:2015)
+title("Pulmon 2003-2015")
+lines((1:156),pred1,col=2)
+
+
 ```
 
 
