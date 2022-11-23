@@ -1,0 +1,191 @@
+---
+title: "poisson_cancer"
+author: "Alvaro Montiel"
+date: "2022-11-23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# Serie de tiempo
+
+
+## Estadística descriptiva - Univariada serie de tiempo pulmón
+
+```{r,Ajuste_FECDIAG_ (tipo DATE), echo=FALSE, include=FALSE }
+## Fechas
+library(tidyverse)
+new_date <- ""
+contador <- 1 
+for(i in bd_pulmon$FECDIAG){
+  new_date[[contador]] <- str_c(str_sub(i, 1, 4),"-",str_sub(i, -4,-3),"-",str_sub(i, -2, -1))
+  contador <- contador +  1
+}
+
+new_date <- as.Date(new_date, "%Y-%m-%d")
+
+bd_pulmon$FECDIAG_ <- new_date
+```
+
+```{r variables_to_plot, echo=FALSE, include=FALSE }
+#Ajuste de la variable de conteo (agrupada por mes), análisis descriptivo de la variable número de casos por mes y confección de gráfico de número de nuevos casos en función del tiempo (sin ningún ajuste!!)
+
+## Grafico numero de casos en el tiempo
+bd_pulmon$YEAR <- str_sub(bd_pulmon$FECDIAG_, 1,4)
+bd_pulmon$MONTH <- str_sub(bd_pulmon$FECDIAG_, 6,7)
+a <- bd_pulmon %>% group_by(YEAR, MONTH) %>% tally()
+time_serie <- ts(a[,3], start=2003, frequency=12 )
+```
+
+```{r, plot_casos_mes_1}
+## Casos de cancer de pulmon 2003-2015
+
+plot(time_serie, ylim=c(0,40),
+     main="Número de casos, cáncer de pulmon mensuales 2003-2015")
+```
+
+```{r, plot_casos_mes_2, echo=FALSE, include=FALSE}
+## Otra forma de obtener el grafico
+
+library(lubridate)
+contador = 1
+new_date_2 =""
+for(i in bd_pulmon$FECDIAG){
+  new_date_2[[contador]] <- str_c(str_sub(i, 1, 4),"-",str_sub(i, -4,-3))
+  contador <- contador +  1
+}
+bd_pulmon$MESAÑO <- new_date_2
+
+by_mesdiag <- bd_pulmon %>% group_by(MESAÑO)
+conteo_mes <- by_mesdiag %>% tally()
+
+if (nrow(conteo_mes) < 156) {
+  print("Hay meses sin nuevos casos")
+} else (
+  print("Todos los meses con casos")
+)
+
+casos_nuevos_mes <- ts(conteo_mes[,2], start=2003, frequency=12)
+plot(casos_nuevos_mes, 
+     ylim= c(0, 40))
+
+#ggplot(data = conteo_mes, aes(x = as.Date(MESAÑO,"%Y-%m"), y = n)) 
+#+ geom_line(color = "#00AFBB", size = 2)
+```
+
+```{r,descriptiva_casos_mes}
+## Descriptive analysis of lung cancer cases by month 
+
+conteo_mes %>% summarise(
+  Mínimo = min(n),
+  Máximo = max(n),
+  Rango = max(n)-min(n),
+  Qu_25 = quantile(n, prob=c(0.25)),
+  Qu_50 = quantile(n, prob=c(0.5)),
+  Qu_75 = quantile(n, prob=c(0.75)),
+  Media = round(mean(n),4),
+  Mediana = median(n),
+  Varianza = round(var(n),4),
+  Desv_Estándar = round(sd(n),4),
+  CV = round(sd(n)/mean(n)*100,4)
+)
+```
+
+```{r tasa_to_scaterplot, include=FALSE, echo=FALSE}
+### Scaterplot 
+### Computar tasas ajustadas, usé la población INE para cada año calendario
+a <- a %>% mutate(population = case_when(
+  YEAR == 2003 ~ 510045,
+  YEAR == 2004 ~ 517333,
+  YEAR == 2005 ~ 524422,
+  YEAR == 2006 ~ 531553,
+  YEAR == 2007 ~ 539071,
+  YEAR == 2008 ~ 546939,
+  YEAR == 2009 ~ 554646,
+  YEAR == 2010 ~ 562331,
+  YEAR == 2011 ~ 570307,
+  YEAR == 2012 ~ 578137,
+  YEAR == 2013 ~ 586685,
+  YEAR == 2014 ~ 596155,
+  YEAR == 2015 ~ 604877
+))
+
+a$rate <- with(a, n/population*10^5)
+
+```
+
+```{r}
+#summary de la Data para confeccionar el scaterplot
+summary(a)
+
+## scaterplot - tasa mensual 2003-2015
+plot(a$rate,type="n",ylim=c(00,6),xlab="Year", ylab="Rate x 100.000",
+     bty="l",xaxt="n")
+points(a$rate,cex=0.7)
+axis(1,at=0:13*12,labels=F)
+axis(1,at=0:12*12+6,tick=F,labels=2003:2015)
+title("Pulmon 2003-2015")
+```
+
+```{r, include=F, echo=F}
+#Poisson with the standardised population as an offset
+modelo1 <- glm(n ~ offset(log(population)), family="poisson", a)
+summary(modelo1)
+summary(modelo1)$dispersion
+#round(ci.lin(modelo1,Exp=T),3)
+
+# create a new dataframe with 0.1 time units to improve the graph
+datanew <- data.frame(stdpop=mean(a$population),
+                      time= 1:600/10,month=rep(1:120/10,5))
+
+# We generate predicted values based on the model in order to create a plot
+pred1 <- predict(modelo1,type="response",a)
+
+#This can then be plotted along with a scatter graph (see above)
+plot(a$rate,type="n",ylim=c(00,6),xlab="Year", ylab="Rate x 100.000",
+     bty="l",xaxt="n")
+points(a$rate,cex=0.7)
+axis(1,at=0:13*12,labels=F)
+axis(1,at=0:12*12+6,tick=F,labels=2003:2015)
+title("Pulmon 2003-2015")
+lines((1:156),pred1,col=2)
+
+
+```
+
+```{r, include=F, echo=F}
+edades <- split(bd_pulmon$EDAD, bd_pulmon$SEXO)
+plot(density(edades$`1`),
+     lwd=3,
+     col="blue3",
+     xlim = c(15, 100),
+     main="por sexo",
+     las=1,
+     xlab="Edad",
+     ylab="densidad")
+lines(density(edades$`2`), lwd =3,
+      col="deeppink")
+legend('topleft', legend=c("H", "M"),
+       lwd=3,
+       col=c('blue', 'deeppink'), bty='n')
+
+
+
+qqnorm(edades$`1`, pch=20, main="QQ edad hombres")
+qqline(edades$`1`)
+
+
+qqnorm(edades$`2`, pch=20, main="QQ edad mujeres")
+qqline(edades$`2`)
+
+
+shapiro.test(edades$`1`)
+shapiro.test(edades$`2`)
+
+```
+
+```{r}
+
+```
+
