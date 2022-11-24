@@ -1,0 +1,2525 @@
+---
+title: "Serie de tiempo cáncer de Piel en Antofagasta"
+output:
+  html_document:
+    df_print: paged
+    pdf_document: default
+    css:
+    - "style-1.css"
+    - "style-2.css"
+  pdf_document: default
+---
+
+```{r, carga de archivos, echo=FALSE, include=FALSE}
+library(readr)
+if (Sys.info()[['sysname']] == "Darwin"){
+  bd <- read_delim("/Users/alvaro/Documents/Data_Science/R/proyecto_grado/cr5_18052022.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE)
+} else {
+   bd <- read_delim("C:/Users/Usuario/Documents/R/proyecto de grado/cr5_18052022.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE) 
+}
+
+cancer = "Piel"
+```
+
+
+------------------------------------------------------------------------
+
+
+#### Variables en la base de datos.
+
+-   TUMOURID: Identificación del tumor.
+
+-   NOCASO: Número del caso (1 caso puede tener uno o más tumores).
+
+-   FECNAC: Fecha nacimiento en formato YYYYMMDD (variable numérica).
+
+-   EDAD: Edad en años a la fecha del diagnóstico.
+
+-   SEXO:
+
+    -   1=Hombre,
+
+    -   2=Mujeres.
+
+-   REGCOM: Código comunas:
+
+    -   2101=Antofagasta;
+
+    -   2201=Calama;
+
+    -   2301=Tocopilla.
+
+-   FECDIAG: Fecha de diagnóstico del tumor en formato YYYYMMDD (variable numérica), "20030101 - 20151231".
+
+-   TOP: Código topográfico del tumor en formato CIE-O.
+
+-   MORF: Código morfológico CIE-O.
+
+-   MORF_GRUPO (PIEL):
+
+    -   1=Neoplasias de células escamosas;
+
+    -   2=Neoplasias de células basales;
+
+    -   3=Otras Morfologías
+
+-   COMP: Comportamiento del tumor:
+
+    -   3=Maligno.
+
+
+-   GRA: Grado de diferenciación del tumor:
+
+    -   1=Bien diferenciado;
+
+    -   2= Moderadamente Diferenciado;
+
+    -   3=Poco Diferenciado;
+
+    -   4=Anaplásico;
+
+    -   5=Células T;
+
+    -   6=Células B;
+
+    -   7=Célula Nula;
+
+    -   8=Células NK;
+
+    -   9=Desconocido.
+
+-   EXT: Grado de extensión del tumor:
+
+    -   0=In situ;
+
+    -   1=Localizado;
+
+    -   2=Regional;
+
+    -   3=Metástasis;
+
+    -   9=Desconocido.
+
+-   BASE: Base diagnóstico:
+
+    -   0=Solo Certificado de defunción;
+
+    -   1=Clínico;
+
+    -   2=Investigación clínica;
+
+    -   4=Bioquímica o Inmunología;
+
+    -   5=Citología;
+
+    -   6=Histología de metástasis;
+
+    -   7=Histología de sitio primario;
+
+    -   9=Desconocido.
+
+-   C10: Código CIE10.
+
+-   PMSEC: Secuencia de tumores primarios.
+
+-   PMTOT: Número total de tumores primarios.
+
+-   FUE1: Fuente.
+
+-   RUT: Rut del caso.
+
+```{r, Recorte de las variables, echo=FALSE, include=FALSE}
+## Carga del paquete dplyr
+library(dplyr)
+
+## VEJIGA
+bd_ <- bd %>% 
+  filter(C10=="C440" | C10=="C441" | C10=="C442" | C10=="C443" | C10=="C444" |
+           C10=="C445" | C10=="C446" | C10=="C447" | C10=="C448" | 
+             C10=="C449") %>%
+  #filter(TOP==670 | TOP==671 | TOP==672 | TOP==673 | TOP==674 | TOP==675 | 
+           #TOP==676 | TOP==677 | TOP==678 | TOP==679) %>%
+  #filter(REGCOM=="02101" | REGCOM=="02201" | REGCOM=="02301" & COMP==3) %>%
+  select(TUMOURID, NOCASO, FECNAC, EDAD, SEXO, REGCOM, FECDIAG,
+         TOP, MORF, COMP, GRA, EXT, LAT, BASE, C10, PMSEC, PMTOT, FUE1, RUT)
+
+```
+
+
+```{r}
+table(bd_$MORF)
+```
+
+
+
+
+
+```{r, Ajuste a la base de datos, echo=FALSE, include=FALSE }
+## NUEVA VARIABLE PARA LA TOPOGRAFÍA DEL PULMON:  
+### TODAS LAS SUBLOCALIZACIONES AGRUPADAS COMO C67, SON MUY POCAS LAS LOCALIZACIONES
+### NO C67.9
+bd_$TOP_ <- "C44"
+
+## CORREGÍ UNA MORFOLOGÍA EN EL ORIGEN POR SER MUY RARA Y AL VOLVER A REVISAR LA BIOPSIA
+## EL CÓDIGO 8323 ERA MÁS APROPIADO.
+####  bd_pulmon <- bd_pulmon %>% mutate(MORF = ifelse(RUT == 5302873, 8323, MORF))
+
+## AGRUPACION DE LAS MORFOLOGIAS PARA BASE DE PULMÓN
+bd_ <- bd_ %>% mutate(MORF_GRUPO = case_when(
+  MORF == 8050 | MORF == 8051 | MORF == 8070 | MORF == 8071 | MORF == 8072 | 
+  MORF == 8074 | MORF == 8075 | MORF == 8076 | MORF == 8082 | MORF == 8083 | 
+  MORF == 8084 ~ 1,
+  MORF == 8090 | MORF == 8091 | MORF == 8091 | MORF == 8092 | MORF == 8093 |
+  MORF == 8094 | MORF == 8095 | MORF == 8097 | MORF == 8098 | MORF == 8102 ~ 2,
+  MORF == 8000 | MORF == 8004 | MORF == 8010 | MORF == 8011 | MORF == 8030 |
+  MORF == 8140 | MORF == 8230 | MORF == 8246 | MORF == 8247 | MORF == 8310 | 
+  MORF == 8401 | MORF == 8410 | MORF == 8430 | MORF == 8480 | MORF == 8560 | 
+  MORF == 8574 | MORF == 8832 | MORF == 8833 | MORF == 8980 ~ 3)
+  )
+```
+
+
+------------------------------------------------------------------------
+
+# Estadística descriptiva
+## Univariada categórica para tumores de Vejiga
+
+------------------------------------------------------------------------
+
+
+### Número de casos por sexo
+
+```{r, casos_sexo, echo=F}
+table(factor(bd_$SEXO, levels=c(1,2), labels = c("Hombres", "Mujeres")))
+```
+
+### Proporción de casos por sexo
+
+```{r, proporcion_sexo, echo=F}
+round(prop.table(table(factor(bd_$SEXO, levels=c(1,2), labels = c("Hombres", "Mujeres"))))*100,2)
+```
+
+### Casos por comuna
+
+```{r, casos_region, echo=F}
+tabla_region = table(factor(bd_$REGCOM,
+                            levels=c("02101","02102","02103","02104",
+                                     "02201","02202","02203",
+                                     "02301","02302"),
+                            labels=c("Afta", "Mejillones", "Sierra Gorda", "Taltal",
+                                     "Calama", "Ollagüe", "San Pedro de Atacama", 
+                                     "Tocopilla", "MAría Elena")))
+addmargins(tabla_region)
+```
+
+### Proporción de casos por comuna
+
+```{r, proporcion_region, echo=F}
+round(prop.table(tabla_region),2)*100
+```
+
+### Casos en Antofagasta, Calama y Tocopilla
+
+```{r, casos_comunas, echo=F}
+table(factor(bd_$REGCOM, 
+             levels=c("02101", "02201", "02301"), 
+             labels=c("Afta", "Calama", "Tocopilla")))
+```
+
+### Proporción de casos en Antofagasta, Calama y Tocopilla
+
+```{r, proporcion_comunas, echo=F}
+round(prop.table(table(factor(bd_$REGCOM, 
+                              levels=c("02101", "02201", "02301"),
+                              labels=c("Afta", "Calama", "Tocopilla"))))*100,2)
+```
+
+### Casos según morfología
+
+```{r, casos_morfologia, echo=F}
+morfologia = table(factor(bd_$MORF_GRUPO,
+             levels = c(1,2,3), 
+             labels = c("Neoplasias de células escamosas", 
+                        "Neoplasias de células basales", 
+                        "Otras morfologías")))
+
+morfologia
+```
+
+### Proporción de casos según morfología
+
+```{r, ppcion_morfologia ,echo=F}
+round(prop.table(morfologia),3)*100
+```
+
+### Casos según diferenciacion tumores
+
+```{r, casos_diferenciacion, echo=F}
+table(factor(bd_$GRA, levels = c(1,2,3,4,9), labels = 
+               c("Bien Diferenciado","Moderadamente Diferenciados",
+                 "Poco Diferenciado","Anaplásico","Desconocido")))
+#table(bd_$GRA)
+```
+
+### Proporción de casos según diferenciación
+
+```{r, ppcion_difenciacion, echo=F}
+round(prop.table(table(factor(
+ bd_$GRA, levels = c(1,2,3,4,9), labels = 
+               c("Bien Diferenciado","Moderadamente Diferenciados",
+                 "Poco Diferenciado","Anaplásico","Desconocido") 
+  )))*100,2)
+```
+
+### Casos según extensión tumoral
+
+```{r, casos_extension, echo=F}
+table(factor(bd_$EXT, levels = c(1,2,3,9), labels = c(
+  "Localizado","Regional","Metástasis","Desconocido"
+)))
+#table(bd_$EXT)
+```
+
+### Proporción de casos según extensión tumoral
+
+```{r, ppcion_extension, echo=F}
+round(prop.table(table(factor(bd_$EXT, levels = c(1,2,3,9),
+                              labels=c(                                "Localizado","Regional","Metástasis","Desconocido"  
+                              )
+                              )))*100,2)
+```
+
+### Casos según base diagnóstico
+
+```{r, casos_base, echo=F}
+table(factor(bd_$BASE, levels = c(0,1,6,7),
+             labels = c("Solo DCO",
+                        "Clínica",
+                        "Histología de MTS",
+                        "Histología de sitio primario")
+             ))
+#table(bd_$BASE)
+
+
+```
+
+### Proporción de casos según base diagnóstico
+
+```{r, ppcion_base, echo=F}
+round(prop.table(table(factor(bd_$BASE, levels = c(0,1,6,7), 
+                              labels = c(
+                                "Solo DCO",
+                                "Clínica",
+                                "Histología de MTS",
+                                "Histología de sitio primario"
+                              ))
+                              ))*100,2)
+```
+
+```{r, echo=F, include=F}
+## PRIMARIO MÚLTIPLES
+### HAY 134 NA, TRATAR DE ARREGLAR EN LA BASE DE CR5
+addmargins(table(bd_$PMTOT))
+```
+
+
+------------------------------------------------------------------------
+
+
+## Estadística descriptiva univariada cuantitativa, Vejiga
+
+
+------------------------------------------------------------------------
+
+### Edad
+```{r, descriptiva_cuanti, echo=F}
+bd_ %>% summarise(
+  Mínimo = min(EDAD),
+  Máximo = max(EDAD),
+  Rango = max(EDAD)-min(EDAD),
+  Qu_25 = quantile(EDAD, prob=c(0.25)),
+  Qu_50 = quantile(EDAD, prob=c(0.5)),
+  Qu_75 = quantile(EDAD, prob=c(0.75)),
+  Media = round(mean(EDAD),4),
+  Mediana = median(EDAD),
+  Varianza = round(var(EDAD),4),
+  Desv_Estándar = round(sd(EDAD),4),
+  CV = round(sd(EDAD)/mean(EDAD)*100,4)
+)
+```
+
+### Histrograma edad
+```{r, histograma_edad, echo=F}
+hist(bd_$EDAD,
+     xlab="Edad",
+     ylab="Frecuencia",
+     main="Histograma Edad"
+     )
+```
+
+### Gráfico de densidad edad
+```{r, density_plot, echo=F}
+plot(density(bd_$EDAD),
+     lwd=3,
+     col="blue3",
+     xlim = c(15, 100),
+     main="Gráfico de densidad de la Edad",
+     las=1,
+     xlab="Edad",
+     ylab="densidad")
+```
+
+### Normal QQ
+```{r, normal_qq_edad, echo=F}
+qqnorm(bd_$EDAD, pch=20, main="QQ Edad")
+qqline(bd_$EDAD)
+
+```
+
+### Test de normalidad de Shapiro-Wilk
+```{r, shapiro_test_edad, echo=F}
+# H0 = la muestra proviene de una población normal
+shapiro.test(bd_$EDAD)
+
+```
+
+
+------------------------------------------------------------------------
+
+
+## Estadística descriptiva Bivariada
+
+
+------------------------------------------------------------------------
+
+
+### Número de casos por sexo en las comunas de Antofagasta, Calama y Tocopilla
+```{r, sexo_comuna_numero, echo=F}
+sexo_comuna <- table(factor(bd_$REGCOM, 
+                            levels = c('02101', 
+                                       '02201', 
+                                       '02301'), 
+                            labels = c('Antofagasta', 
+                                       'Calama', 
+                                       'Tocopilla')),
+                     factor(bd_$SEXO, 
+                            levels = c('1','2'), 
+                            labels = c('Hombres', 'Mujeres')))
+addmargins(sexo_comuna)
+```
+
+### Proporción de casos por sexo en las comunas de Antofagasta, Calama y Tocopilla
+```{r, sexo_comuna_proporcion, echo=F}
+round(addmargins(prop.table(sexo_comuna,1),2),4)*100
+```
+
+### Número de casos por sexo y morfología
+```{r, sexo_morfologia, echo=F}
+sexo_morfologia <- table(factor(bd_$MORF_GRUPO, 
+                                levels=c(1,2,3), 
+                                labels = c("Neoplasias de células escamosas", 
+                                           "Neoplasias de células basales", 
+                                           "Otras morfologías")),
+                         factor(bd_$SEXO, 
+                                levels = c('1','2'), 
+                                labels = c('Hombres', 'Mujeres')))
+addmargins(sexo_morfologia)
+```
+
+### Proporción de casos por sexo y morfología
+```{r, ppcion_sexo_morfologia, echo=F}
+round(addmargins(prop.table(sexo_morfologia,1),2),4)*100
+```
+
+### Número de casos por sexo y extensión tumoral
+```{r, sexo_extension, echo=F}
+sexo_extension <- table(factor(bd_$EXT, 
+                               levels=c(1,2,3,9),
+                               labels = c("Localizado",
+                                          "Regional",
+                                          "Metástasis",
+                                          "Desconocido")),
+                        factor(bd_$SEXO, 
+                               levels = c('1','2'), 
+                               labels = c('Hombres', 
+                                          'Mujeres')
+                        ))
+addmargins(sexo_extension)
+#table(bd_$EXT)
+```
+
+### Proporción de casos por sexo y extensión tumoral
+```{r, ppcion_sexo_extension, echo=F}
+round(addmargins(prop.table(sexo_extension,1),2),4)*100
+```
+
+### Número de casos por sexo y base diagnóstica
+```{r, sexo_base, echo=F}
+sexo_base <- table(factor(bd_$BASE, 
+                               levels=c(0,1,6,7),
+                               labels = c("Solo DCO",
+                                          "Clínico",
+                                          "Histología de Metástasis",
+                                          "Histología de sitio primario")),
+                        factor(bd_$SEXO, 
+                               levels = c('1','2'), 
+                               labels = c('Hombres', 'Mujeres')
+                   ))
+addmargins(sexo_base)
+```
+
+### Proporción de casos por sexo y base diagnóstica
+```{r, ppcion_sexo_base, echo=F}
+round(addmargins(prop.table(sexo_base,1),2),4)*100
+```
+
+### Número de casos por Morfología y base diagnóstica
+```{r, morfologia_base, echo=F}
+morfologia_base <- table(factor(bd_$MORF_GRUPO, 
+                                levels=c(1,2,3), 
+                                labels = c("Neoplasias de células escamosas", 
+                                           "Neoplasias de células basales", 
+                                           "Otras morfologías")),
+  
+                          factor(bd_$BASE, 
+                               levels=c(0,1,6,7),
+                               labels = c("Solo DCO",
+                                          "Clínico",
+                                          "Histología de Metástasis",
+                                          "Histología de sitio primario")))
+
+addmargins(morfologia_base)
+```
+
+### Proporción de casos por Morfología y base diagnóstica
+```{r, ppcion_morfologia_base, echo=F}
+round(addmargins(prop.table(morfologia_base,1),2),4)*100
+```
+
+### Número de casos por Morfología y Extensión
+```{r, morfologia_extension, echo=F}
+morfologia_extension <- table(factor(bd_$MORF_GRUPO, 
+                                levels=c(1,2,3), 
+                                labels = c("Neoplasias de células escamosas", 
+                                           "Neoplasias de células basales", 
+                                           "Otras morfologías")),
+                              factor(bd_$EXT, 
+                               levels=c(1,2,3,9),
+                               labels = c("Localizado",
+                                          "Regional",
+                                          "Metástasis",
+                                          "Desconocido")))
+                        
+
+addmargins(morfologia_extension)
+```
+
+### Proporción de casos por Morfología y Extensión
+```{r, ppcion_morfologia_extension, echo=F}
+round(addmargins(prop.table(morfologia_extension,1),2),4)*100
+```
+
+### Número de casos por Morfología y comuna
+```{r, morfologia_comuna, echo=F}
+morfologia_comuna <- table(factor(bd_$MORF_GRUPO, 
+                                levels=c(1,2,3), 
+                                labels = c("Neoplasias de células escamosas", 
+                                           "Neoplasias de células basales", 
+                                           "Otras morfologías")),
+                       factor(bd_$REGCOM, 
+                                  levels = c('02101', 
+                                             '02201', 
+                                             '02301'), 
+                                  labels = c('Antofagasta', 
+                                             'Calama', 
+                                             'Tocopilla'))
+                         )
+
+addmargins(morfologia_comuna)
+```
+
+### Proporción de casos por Morfología y comuna, por filas
+```{r, ppcion_morfologia_filas, echo=F}
+round(addmargins(prop.table(morfologia_comuna,1),2),4)*100
+```
+
+### Proporción de casos por Morfología y comuna, por columnas
+```{r,  ppcion_morfologia_columnas, echo=F}
+round(addmargins(prop.table(morfologia_comuna,2),1),4)*100
+```
+
+### Número de casos por Extensión y comuna
+```{r, extension_comuna, echo=F}
+extension_comuna <- table(
+                        factor(bd_$EXT, 
+                               levels=c(1,2,3,9),
+                               labels = c("Localizado",
+                                          "Regional",
+                                          "Metástasis",
+                                          "Desconocido")),
+                       factor(bd_$REGCOM, 
+                                  levels = c('02101', 
+                                             '02201', 
+                                             '02301'), 
+                                  labels = c('Antofagasta', 
+                                             'Calama', 
+                                             'Tocopilla'))
+                         )
+
+addmargins(extension_comuna)
+```
+
+### Proporcion de casos por Extensión y comuna, filas
+```{r, ppcion_extension_comuna_filas, echo=F}
+round(addmargins(prop.table(extension_comuna, 1),2),4)*100
+```
+
+
+### Proporción de casos por Extensión y comuna, columnas
+```{r, ppcion_extension_comuna_columnas, echo=F}
+round(addmargins(prop.table(extension_comuna,2),1),4)*100
+```
+
+### Número de casos por Extensión y Base diagnóstica
+```{r, extension_base, echo=F}
+extension_base <- table(
+                        factor(bd_$EXT, 
+                               levels=c(1,2,3,9),
+                               labels = c("Localizado",
+                                          "Regional",
+                                          "Metástasis",
+                                          "Desconocido")),
+                       factor(bd_$BASE, 
+                               levels=c(0,1,6,7),
+                               labels = c("Solo DCO",
+                                          "Clínico",
+                                          "Histología de Metástasis",
+                                          "Histología de sitio primario"))
+                         )
+
+addmargins(extension_base)
+```
+
+### Proporción de casos por Extensión y Base diagnóstica, filas
+```{r, extension_base_filas, echo=F}
+round(addmargins(prop.table(extension_base,1),2),4)*100
+```
+
+### Proporción de casos por Extensión y Base diagnóstica, columnas
+```{r, extension_base_columnas, echo=F}
+round(addmargins(prop.table(extension_base,2),1),4)*100
+```
+
+### Número de casos por Base diagnóstica y comuna
+
+```{r, base_comuna, echo=F}
+base_comuna <- table(factor(bd_$BASE, 
+                               levels=c(0,1,6,7),
+                               labels = c("Solo DCO",
+                                          "Clínico",
+                                          "Histología de Metástasis",
+                                          "Histología de sitio primario")),
+                       factor(bd_$REGCOM, 
+                                  levels = c('02101', 
+                                             '02201', 
+                                             '02301'), 
+                                  labels = c('Antofagasta', 
+                                             'Calama', 
+                                             'Tocopilla'))
+                         )
+
+addmargins(base_comuna)
+```
+
+### Proporción de casos por Base diagnóstica y comuna, filas
+```{r, ppcion_base_comunas_fila, echo=F}
+round(addmargins(prop.table(base_comuna,1),2),4)*100
+```
+
+
+### Proporción de casos por Base diagnóstica y comuna, columnas
+```{r, ppcion_bace_comuna_columnas, echo=F}
+round(addmargins(prop.table(base_comuna,2),1),4)*100
+```
+
+### Edad - Sexo
+#### Boxplot edad vs sexo
+```{r,box_plot_sexo_edad ,echo=F}
+boxplot(bd_$EDAD ~ factor(bd_$SEXO, 
+                      levels = c(1,2), 
+                      labels = c("Hombres", "Mujeres")),
+        xlab = "Sexo",
+        ylab = "Edad")
+```
+
+### Boxplot edad vs comuna
+```{r,box_plot_edad_comuna ,echo=F}
+boxplot(bd_$EDAD ~ factor(bd_$REGCOM,
+                                levels = c("02101",
+                                           "02201",
+                                           "02301"),
+                                labels = c("Antofagasta",
+                                           "Calama",
+                                           "Tocopilla")),
+                                xlab="Comunas",
+                                ylab="Edad")
+```
+
+### Boxplot edad - morfologia
+```{r,box_plot_edad_morfologia ,echo=F}
+boxplot(bd_$EDAD ~ factor(bd_$MORF_GRUPO, 
+                                levels = c(1,2,3),
+                                labels = c("Neoplasias de células escamosas", 
+                                           "Neoplasias de células basales", 
+                                           "Otras morfologías")),
+        xlab="Morfología",
+        ylab="Edad"
+        )
+```
+
+### Boxplot edad - extension
+```{r,box_plot_edad_extension ,echo=F}
+boxplot(bd_$EDAD ~ factor(bd_$EXT, 
+                                levels = c(1,2,3,9),
+                                labels = c("Localizado",
+                                           "Regional",
+                                           "Metástasis",
+                                           "Desconocido")),
+        xlab="Extensión",
+        ylab="Edad")
+                                
+```
+
+### Boxplot edad - base diagnóstica
+```{r,box_plot_edad_base ,echo=F}
+boxplot(bd_$EDAD ~ factor(bd_$BASE, 
+                                levels = c(0,1,6,7),
+                                labels = c("Solo DCO",
+                                           "Clínico",
+                                           "MTS",
+                                           "Sitio primario")),
+        xlab="Base Diagnóstica",
+        ylab="Edad")
+```
+
+
+## Tasa de incidencia ajustada por año
+```{r, preparar_la_base, echo=F, include=F}
+### CREAR LA VARIABLE AGE_GROUP
+bd_ <- bd_ %>% mutate(AGE_GROUP = case_when(
+  EDAD >= 0 & EDAD <= 4 ~ 1,
+  EDAD >= 5 & EDAD <= 9 ~ 2,
+  EDAD >= 10 & EDAD <= 14 ~ 3,
+  EDAD >= 15 & EDAD <= 19 ~ 4,
+  EDAD >= 20 & EDAD <= 24 ~ 5,
+  EDAD >= 25 & EDAD <= 29 ~ 6,
+  EDAD >= 30 & EDAD <= 34 ~ 7,
+  EDAD >= 35 & EDAD <= 39 ~ 8,
+  EDAD >= 40 & EDAD <= 44 ~ 9,
+  EDAD >= 45 & EDAD <= 49 ~ 10,
+  EDAD >= 50 & EDAD <= 54 ~ 11,
+  EDAD >= 55 & EDAD <= 59 ~ 12,
+  EDAD >= 60 & EDAD <= 64 ~ 13,
+  EDAD >= 65 & EDAD <= 69 ~ 14,
+  EDAD >= 70 & EDAD <= 74 ~ 15,
+  EDAD >= 75 & EDAD <= 79 ~ 16,
+  EDAD >= 80  ~ 17
+))
+
+### CREAR LA VARIABLE YEAR Y MES
+library(tidyverse)
+
+year <- ""
+mes <- ""
+contador <- 1   
+for(i in bd_$FECDIAG){
+  year[[contador]] <- as.integer(str_sub(i, 1, 4))
+  mes[[contador]] <- as.integer(str_sub(i,5,6))
+  contador <- contador +  1
+}  
+
+bd_$YEAR_DIAG <- as.integer(year)
+bd_$MES_DIAG <- as.integer(mes)
+```
+
+```{r, group_by_TIA, echo=F, include=F}
+
+by_age_year <- bd_ %>% group_by(YEAR_DIAG, AGE_GROUP) %>% count()
+
+```
+
+```{r, poblaciones, echo=F, include=F}
+### AGREGAR POBLACION ESTANDAR
+by_age_year = by_age_year %>% mutate(POB_STANDAR = case_when(
+  AGE_GROUP == 1 ~ 12000,
+  AGE_GROUP == 2 ~ 10000,
+  AGE_GROUP == 3 ~ 9000,
+  AGE_GROUP == 4 ~ 9000,
+  AGE_GROUP == 5 ~ 8000,
+  AGE_GROUP == 6 ~ 8000,
+  AGE_GROUP == 7 ~ 6000,
+  AGE_GROUP == 8 ~ 6000,
+  AGE_GROUP == 9 ~ 6000,
+  AGE_GROUP == 10 ~ 6000,
+  AGE_GROUP == 11 ~ 5000,
+  AGE_GROUP == 12 ~ 4000,
+  AGE_GROUP == 13 ~ 4000,
+  AGE_GROUP == 14 ~ 3000,
+  AGE_GROUP == 15 ~ 2000,
+  AGE_GROUP == 16 ~ 1000,
+  AGE_GROUP == 17 ~ 1000
+))
+
+### CARGAR POBLACION INE
+library(readxl)
+if (Sys.info()[['sysname']] == "Darwin"){
+  #poblacion_ine <- read_delim("/Users/alvaro/Documents/Data_Science/R/proyecto_grado/cr5_18052022.txt", 
+    #delim = "\t", escape_double = FALSE, 
+    #trim_ws = TRUE)
+} else {
+   poblacion_ine <- read_excel("D:/Datasets/poblacion/pob_ine_censo2017_proyecciones.xlsx")
+}
+
+
+### AGE GROUP EN LA POBLACION INE
+poblacion_ine <- poblacion_ine %>% mutate(AGE_GROUP = case_when(
+  Edad >= 0 & Edad <= 4 ~ 1,
+  Edad >= 5 & Edad <= 9 ~ 2,
+  Edad >= 10 & Edad <= 14 ~ 3,
+  Edad >= 15 & Edad <= 19 ~ 4,
+  Edad >= 20 & Edad <= 24 ~ 5,
+  Edad >= 25 & Edad <= 29 ~ 6,
+  Edad >= 30 & Edad <= 34 ~ 7,
+  Edad >= 35 & Edad <= 39 ~ 8,
+  Edad >= 40 & Edad <= 44 ~ 9,
+  Edad >= 45 & Edad <= 49 ~ 10,
+  Edad >= 50 & Edad <= 54 ~ 11,
+  Edad >= 55 & Edad <= 59 ~ 12,
+  Edad >= 60 & Edad <= 64 ~ 13,
+  Edad >= 65 & Edad <= 69 ~ 14,
+  Edad >= 70 & Edad <= 74 ~ 15,
+  Edad >= 75 & Edad <= 79 ~ 16,
+  Edad >= 80  ~ 17
+))
+
+
+### SUBSET POBLACION ANTOFAGASTA
+poblacion_antofagasta <- as.data.frame(subset(poblacion_ine, Region == 2))
+
+### GROUPBY INE ANTOFAGASTA
+poblacion_antofagasta_edad <- as.data.frame(poblacion_antofagasta) %>% group_by(AGE_GROUP) %>% 
+  #(`Poblacion 2003`)
+  summarise(pob_2003 = sum(`Poblacion 2003`),
+            pob_2004 = sum(`Poblacion 2004`),
+            pob_2005 = sum(`Poblacion 2005`),
+            pob_2006 = sum(`Poblacion 2006`),
+            pob_2007 = sum(`Poblacion 2007`),
+            pob_2008 = sum(`Poblacion 2008`),
+            pob_2009 = sum(`Poblacion 2009`),
+            pob_2010 = sum(`Poblacion 2010`),
+            pob_2011 = sum(`Poblacion 2011`),
+            pob_2012 = sum(`Poblacion 2012`),
+            pob_2013 = sum(`Poblacion 2013`),
+            pob_2014 = sum(`Poblacion 2014`),
+            pob_2015 = sum(`Poblacion 2015`),
+            )
+
+```
+
+```{r, trasponer_data_poblacion, echo=F, include=F}
+### CREAR UN NUEVO DATAFRAME CON LA POBLACION POR ANO Y GRUPO DE EDAD
+posicion = 2
+year = 2003
+data_poblacion = data.frame()
+for (i in colnames(poblacion_antofagasta_edad[2:14])) {
+  dataframe <- poblacion_antofagasta_edad[posicion]
+  dataframe$YEAR_DIAG <- year
+  dataframe$AGE_GROUP <- poblacion_antofagasta_edad$AGE_GROUP
+  dataframe = rename(dataframe, 'POB' = i)
+  posicion = posicion + 1
+  year = year + 1
+  data_poblacion <- rbind(data_poblacion, dataframe)
+}   
+```
+
+```{r, merge_data_poblacion_con_data_by_mes_year, include=F, echo=F}
+data_poblacion_tasa <- merge(by_age_year, data_poblacion, by = c('AGE_GROUP', 'YEAR_DIAG'))
+data_poblacion_tasa <- data_poblacion_tasa %>% arrange(YEAR_DIAG, AGE_GROUP)
+```
+
+```{r,calculo_tasa_incidencia_ajsutada_edad, echo=F}
+
+data_poblacion_tasa$EXPECTED_CASES <- data_poblacion_tasa$n * data_poblacion_tasa$POB_STANDAR / data_poblacion_tasa$POB
+data_poblacion_tasa_ajustada <- data_poblacion_tasa %>% group_by(YEAR_DIAG) %>% summarise('TASA_AJUSTADA' = sum(EXPECTED_CASES)) 
+data_poblacion_tasa_ajustada_rafta <- data_poblacion_tasa_ajustada
+data_poblacion_tasa_ajustada_rafta
+```
+
+### Gráfico de la tasa de incidencia de cáncer de Piel (no melanoma), ajustada por edad en la región de Antofagasta.
+```{r, plot_tasa_ajustada, echo=F}
+plot(data_poblacion_tasa_ajustada_rafta,
+     ylim=c(20,80),
+     ylab="Tasa incidencia ajustada por 100 mil",
+     xlab="Años", 
+     main="Tasas de incidencia por cáncer de Piel, región de Antofagasta", 
+     type="b")
+```
+
+
+
+------------------------------------------------------------------------------
+
+
+# Comuna de Antofagasta
+
+```{r, filtro_base_afta, echo=F, include=F}
+bd_1 <- subset(bd_, REGCOM=='02101')
+```
+
+
+### Número de casos por sexo, Comuna de Antofagasta
+
+```{r, casos_sexo_afta, echo=F}
+table(factor(bd_1$SEXO, levels=c(1,2), labels = c("Hombres", "Mujeres")))
+```
+
+### Proporción de casos por sexo, comuna de Antofagastas
+
+```{r, proporcion_sexo_afta, echo=F}
+round(prop.table(table(factor(bd_1$SEXO, levels=c(1,2), labels = c("Hombres", "Mujeres"))))*100,2)
+```
+
+### Casos según morfología, comuna de Antofagasta
+
+```{r, casos_morfologia_afta, echo=F}
+morfologia = table(factor(bd_1$MORF_GRUPO,
+             levels = c(1,2,3), 
+             labels = c("Neoplasias de células escamosas", 
+                                           "Neoplasias de células basales", 
+                                           "Otras morfologías")))
+
+morfologia
+```
+
+### Proporción de casos según morfología, comuna de Antofagasta
+
+```{r, ppcion_morfologia_afta ,echo=F}
+round(prop.table(morfologia),3)*100
+```
+
+### Casos según diferenciacion tumores, comuna de Antofagasta
+
+```{r, casos_diferenciacion_afta, echo=F}
+table(factor(bd_1$GRA, levels = c(1,2,3,4,9), labels = 
+               c("Bien Diferenciado","Moderadamente Diferenciados",
+                 "Poco Diferenciado","Anaplásico","Desconocido")))
+
+```
+
+### Proporción de casos según diferenciación, Comuna de Antofagasta
+
+```{r, ppcion_difenciacion_afta, echo=F}
+round(prop.table(table(factor(
+ bd_1$GRA, levels = c(1,2,3,4,9), labels = 
+               c("Bien Diferenciado","Moderadamente Diferenciados",
+                 "Poco Diferenciado","Anaplásico","Desconocido") 
+  )))*100,2)
+```
+
+### Casos según extensión tumoral, Comuna de Antofagasta
+
+```{r, casos_extension_afta, echo=F}
+table(factor(bd_1$EXT, levels = c(1,2,3,9), labels = c(
+  "Localizado","Regional","Metástasis","Desconocido"
+)))
+```
+
+### Proporción de casos según extensión tumoral, Comuna de Antofagasta
+
+```{r, ppcion_extension_afta, echo=F}
+round(prop.table(table(factor(bd_1$EXT, levels = c(1,2,3,9),
+                              labels=c(                                "Localizado","Regional","Metástasis","Desconocido"  
+                              )
+                              )))*100,2)
+```
+
+### Casos según base diagnóstico, Comuna de Antofagasta
+
+```{r, casos_base_afta, echo=F}
+table(factor(bd_1$BASE, levels = c(0,1,6,7),
+             labels = c("Solo DCO",
+                        "Clínica",
+                        "Histología de MTS",
+                        "Histología de sitio primario")
+             ))
+
+```
+
+### Proporción de casos según base diagnóstico, Comuna de Antofagasta
+
+```{r, ppcion_base_afta, echo=F}
+round(prop.table(table(factor(bd_1$BASE, levels = c(0,1,6,7), 
+                              labels = c(
+                                "Solo DCO",
+                                "Clínica",
+                                "Histología de MTS",
+                                "Histología de sitio primario"
+                              ))
+                              ))*100,2)
+```
+
+```{r, _afta, echo=F, include=F}
+## PRIMARIO MÚLTIPLES
+### HAY 134 NA, TRATAR DE ARREGLAR EN LA BASE DE CR5
+addmargins(table(bd_1$PMTOT))
+```
+
+
+------------------------------------------------------------------------
+
+
+## Estadística descriptiva univariada cuantitativa, Vejiga Comuna de Antofagasta
+
+
+------------------------------------------------------------------------
+
+### Edad, Comuna de Antofagasta
+```{r, descriptiva_cuanti_afta, echo=F}
+bd_1 %>% summarise(
+  Mínimo = min(EDAD),
+  Máximo = max(EDAD),
+  Rango = max(EDAD)-min(EDAD),
+  Qu_25 = quantile(EDAD, prob=c(0.25)),
+  Qu_50 = quantile(EDAD, prob=c(0.5)),
+  Qu_75 = quantile(EDAD, prob=c(0.75)),
+  Media = round(mean(EDAD),4),
+  Mediana = median(EDAD),
+  Varianza = round(var(EDAD),4),
+  Desv_Estándar = round(sd(EDAD),4),
+  CV = round(sd(EDAD)/mean(EDAD)*100,4)
+)
+```
+
+### Histrograma edad, Comuna de Antofagasta
+```{r, histograma_edad_afta, echo=F}
+hist(bd_1$EDAD,
+     ylab="Frecuencia",
+     xlab="Edad",
+     main="Histograma Edad")
+```
+
+### Gráfico de densidad edad, Comuna de Antofagasta
+```{r, density_plot_afta, echo=F}
+plot(density(bd_1$EDAD),
+     lwd=3,
+     col="blue3",
+     xlim = c(15, 100),
+     main="Gráfico de densidad de la Edad",
+     las=1,
+     xlab="Edad",
+     ylab="densidad")
+```
+
+### Normal QQ, Comuna de Antofagasta
+```{r, normal_qq_edad_afta, echo=F}
+qqnorm(bd_1$EDAD, pch=20, main="QQ Edad")
+qqline(bd_1$EDAD)
+
+```
+
+### Test de normalidad de Shapiro-Wilk, Comuna de Antofagasta
+```{r, shapiro_test_edad_afta, echo=F}
+# H0 = la muestra proviene de una población normal
+shapiro.test(bd_1$EDAD)
+
+```
+
+
+------------------------------------------------------------------------
+
+
+## Estadística descriptiva Bivariada, comuna de Antofagasta
+
+
+------------------------------------------------------------------------
+
+### Número de casos por sexo y morfología, comuna de Antofagasta
+```{r, sexo_morfologia_afta, echo=F}
+sexo_morfologia <- table(factor(bd_1$MORF_GRUPO, 
+                                levels=c(1,2,3), 
+                                labels = c("Neoplasias de células escamosas", 
+                                           "Neoplasias de células basales", 
+                                           "Otras morfologías")),
+                         factor(bd_1$SEXO, 
+                                levels = c('1','2'), 
+                                labels = c('Hombres', 'Mujeres')))
+addmargins(sexo_morfologia)
+
+```
+
+### Proporción de casos por sexo y morfología, comuna de Antofagasta
+```{r, ppcion_sexo_morfologia_afta, echo=F}
+round(addmargins(prop.table(sexo_morfologia,1),2),4)*100
+```
+
+### Número de casos por sexo y extensión tumoral, comuna de Antofagasta
+```{r, sexo_extension_afta, echo=F}
+sexo_extension <- table(factor(bd_1$EXT, 
+                               levels=c(1,2,3,9),
+                               labels = c("Localizado",
+                                          "Regional",
+                                          "Metástasis",
+                                          "Desconocido")),
+                        factor(bd_1$SEXO, 
+                               levels = c('1','2'), 
+                               labels = c('Hombres', 
+                                          'Mujeres')
+                        ))
+addmargins(sexo_extension)
+```
+
+### Proporción de casos por sexo y extensión tumoral, Comuna de Antofagasta
+```{r, ppcion_sexo_extension_afta, echo=F}
+round(addmargins(prop.table(sexo_extension,1),2),4)*100
+```
+
+### Número de casos por sexo y base diagnóstica, comuna de Antofagasta
+```{r, sexo_base_afta, echo=F}
+sexo_base <- table(factor(bd_1$BASE, 
+                               levels=c(0,1,6,7),
+                               labels = c("Solo DCO",
+                                          "Clínico",
+                                          "Histología de Metástasis",
+                                          "Histología de sitio primario")),
+                        factor(bd_1$SEXO, 
+                               levels = c('1','2'), 
+                               labels = c('Hombres', 'Mujeres')
+                   ))
+addmargins(sexo_base)
+```
+
+### Proporción de casos por sexo y base diagnóstica, comuna de Antofagasta
+```{r, ppcion_sexo_base_afta, echo=F}
+round(addmargins(prop.table(sexo_base,1),2),4)*100
+```
+
+### Número de casos por Morfología y base diagnóstica, comuna de Antofagasta
+```{r, morfologia_base_afta, echo=F}
+morfologia_base <- table(factor(bd_1$MORF_GRUPO, 
+                                levels=c(1,2,3), 
+                                labels = c("Neoplasias de células escamosas", 
+                                           "Neoplasias de células basales", 
+                                           "Otras morfologías")),
+  
+                          factor(bd_1$BASE, 
+                               levels=c(0,1,6,7),
+                               labels = c("Solo DCO",
+                                          "Clínico",
+                                          "Histología de Metástasis",
+                                          "Histología de sitio primario")))
+
+addmargins(morfologia_base)
+```
+
+### Proporción de casos por Morfología y base diagnóstica, comuna de Antofagasta
+```{r, ppcion_morfologia_base_afta, echo=F}
+round(addmargins(prop.table(morfologia_base,1),2),4)*100
+```
+
+### Número de casos por Morfología y Extensión, comuna de Antofagasta
+```{r, morfologia_extension_afta, echo=F}
+morfologia_extension <- table(factor(bd_1$MORF_GRUPO, 
+                                levels=c(1,2,3), 
+                                labels = c("Neoplasias de células escamosas", 
+                                           "Neoplasias de células basales", 
+                                           "Otras morfologías")),
+                              factor(bd_1$EXT, 
+                               levels=c(1,2,3,9),
+                               labels = c("Localizado",
+                                          "Regional",
+                                          "Metástasis",
+                                          "Desconocido")))
+                        
+
+addmargins(morfologia_extension)
+```
+
+### Proporción de casos por Morfología y Extensión, comuna de Antofagasta
+```{r, ppcion_morfologia_extension_afta, echo=F}
+round(addmargins(prop.table(morfologia_extension,1),2),4)*100
+```
+
+
+### Número de casos por Extensión y Base diagnóstica, comuna de Antofagasta
+```{r, extension_base_afta, echo=F}
+extension_base <- table(
+                        factor(bd_1$EXT, 
+                               levels=c(1,2,3,9),
+                               labels = c("Localizado",
+                                          "Regional",
+                                          "Metástasis",
+                                          "Desconocido")),
+                       factor(bd_1$BASE, 
+                               levels=c(0,1,6,7),
+                               labels = c("Solo DCO",
+                                          "Clínico",
+                                          "Histología de Metástasis",
+                                          "Histología de sitio primario"))
+                         )
+
+addmargins(extension_base)
+```
+
+### Proporción de casos por Extensión y Base diagnóstica, filas, comuna de Antofagastas
+```{r, extension_base_filas_afta, echo=F}
+round(addmargins(prop.table(extension_base,1),2),4)*100
+```
+
+### Proporción de casos por Extensión y Base diagnóstica, columnas, Comuna de Antofagasta
+```{r, extension_base_columnas_afta, echo=F}
+round(addmargins(prop.table(extension_base,2),1),4)*100
+```
+
+
+### Edad - Sexo
+#### Boxplot edad vs sexo, Comuna de Antofagasta
+```{r,box_plot_sexo_edad_afta ,echo=F}
+boxplot(bd_1$EDAD ~ factor(bd_1$SEXO, 
+                      levels = c(1,2), 
+                      labels = c("Hombres", "Mujeres")),
+        xlab = "Sexo",
+        ylab = "Edad",
+        main="Edad por sexo, comuna de Antofagasta")
+```
+
+
+### Boxplot edad - morfologia, Comuna de Antofagasta
+```{r,box_plot_edad_morfologia_afta ,echo=F}
+boxplot(bd_1$EDAD ~ factor(bd_1$MORF_GRUPO, 
+                                levels = c(1,2,3),
+                                labels = c("Neoplasias de células escamosas", 
+                                           "Neoplasias de células basales", 
+                                           "Otras morfologías")),
+        xlab="Morfología",
+        ylab="Edad",
+        main="Edad por morfología, comuna de Antofagasta"
+        )
+```
+
+### Boxplot edad - extension, Comuna de Antofagasta
+```{r,box_plot_edad_extension_afta ,echo=F}
+boxplot(bd_1$EDAD ~ factor(bd_1$EXT, 
+                                levels = c(1,2,3,9),
+                                labels = c("Localizado",
+                                           "Regional",
+                                           "Metástasis",
+                                           "Desconocido")),
+        xlab="Extensión",
+        ylab="Edad",
+        main="Edad por Extensión")
+                                
+```
+
+### Boxplot edad - base diagnóstica, Comuna de Antofagasta
+```{r,box_plot_edad_base_afta ,echo=F}
+boxplot(bd_1$EDAD ~ factor(bd_1$BASE, 
+                                levels = c(0,1,6,7),
+                                labels = c("Solo DCO",
+                                           "Clínico",
+                                           "MTS",
+                                           "Sitio primario")),
+        xlab="Base Diagnóstica",
+        ylab="Edad",
+        main="Edad por Base diagnóstica, comuna de Antofagasta")
+```
+
+
+## Tasa de incidencia ajustada por año, Comuna de Antofagasta
+```{r, preparar_la_base_afta, echo=F, include=F}
+### CREAR LA VARIABLE AGE_GROUP
+bd_1 <- bd_1 %>% mutate(AGE_GROUP = case_when(
+  EDAD >= 0 & EDAD <= 4 ~ 1,
+  EDAD >= 5 & EDAD <= 9 ~ 2,
+  EDAD >= 10 & EDAD <= 14 ~ 3,
+  EDAD >= 15 & EDAD <= 19 ~ 4,
+  EDAD >= 20 & EDAD <= 24 ~ 5,
+  EDAD >= 25 & EDAD <= 29 ~ 6,
+  EDAD >= 30 & EDAD <= 34 ~ 7,
+  EDAD >= 35 & EDAD <= 39 ~ 8,
+  EDAD >= 40 & EDAD <= 44 ~ 9,
+  EDAD >= 45 & EDAD <= 49 ~ 10,
+  EDAD >= 50 & EDAD <= 54 ~ 11,
+  EDAD >= 55 & EDAD <= 59 ~ 12,
+  EDAD >= 60 & EDAD <= 64 ~ 13,
+  EDAD >= 65 & EDAD <= 69 ~ 14,
+  EDAD >= 70 & EDAD <= 74 ~ 15,
+  EDAD >= 75 & EDAD <= 79 ~ 16,
+  EDAD >= 80  ~ 17
+))
+
+### CREAR LA VARIABLE YEAR Y MES
+library(tidyverse)
+
+year <- ""
+mes <- ""
+contador <- 1   
+for(i in bd_1$FECDIAG){
+  year[[contador]] <- as.integer(str_sub(i, 1, 4))
+  mes[[contador]] <- as.integer(str_sub(i,5,6))
+  contador <- contador +  1
+}  
+
+bd_1$YEAR_DIAG <- as.integer(year)
+bd_1$MES_DIAG <- as.integer(mes)
+```
+
+```{r, group_by_TIA_afta, echo=F, include=F}
+
+by_age_year <- bd_1 %>% group_by(YEAR_DIAG, AGE_GROUP) %>% count()
+
+```
+
+```{r, poblaciones_afta, echo=F, include=F}
+### AGREGAR POBLACION ESTANDAR
+by_age_year = by_age_year %>% mutate(POB_STANDAR = case_when(
+  AGE_GROUP == 1 ~ 12000,
+  AGE_GROUP == 2 ~ 10000,
+  AGE_GROUP == 3 ~ 9000,
+  AGE_GROUP == 4 ~ 9000,
+  AGE_GROUP == 5 ~ 8000,
+  AGE_GROUP == 6 ~ 8000,
+  AGE_GROUP == 7 ~ 6000,
+  AGE_GROUP == 8 ~ 6000,
+  AGE_GROUP == 9 ~ 6000,
+  AGE_GROUP == 10 ~ 6000,
+  AGE_GROUP == 11 ~ 5000,
+  AGE_GROUP == 12 ~ 4000,
+  AGE_GROUP == 13 ~ 4000,
+  AGE_GROUP == 14 ~ 3000,
+  AGE_GROUP == 15 ~ 2000,
+  AGE_GROUP == 16 ~ 1000,
+  AGE_GROUP == 17 ~ 1000
+))
+
+### CARGAR POBLACION INE
+library(readxl)
+if (Sys.info()[['sysname']] == "Darwin"){
+  #poblacion_ine <- read_delim("/Users/alvaro/Documents/Data_Science/R/proyecto_grado/cr5_18052022.txt", 
+    #delim = "\t", escape_double = FALSE, 
+    #trim_ws = TRUE)
+} else {
+   poblacion_ine <- read_excel("D:/Datasets/poblacion/pob_ine_censo2017_proyecciones.xlsx")
+}
+
+
+### AGE GROUP EN LA POBLACION INE
+poblacion_ine <- poblacion_ine %>% mutate(AGE_GROUP = case_when(
+  Edad >= 0 & Edad <= 4 ~ 1,
+  Edad >= 5 & Edad <= 9 ~ 2,
+  Edad >= 10 & Edad <= 14 ~ 3,
+  Edad >= 15 & Edad <= 19 ~ 4,
+  Edad >= 20 & Edad <= 24 ~ 5,
+  Edad >= 25 & Edad <= 29 ~ 6,
+  Edad >= 30 & Edad <= 34 ~ 7,
+  Edad >= 35 & Edad <= 39 ~ 8,
+  Edad >= 40 & Edad <= 44 ~ 9,
+  Edad >= 45 & Edad <= 49 ~ 10,
+  Edad >= 50 & Edad <= 54 ~ 11,
+  Edad >= 55 & Edad <= 59 ~ 12,
+  Edad >= 60 & Edad <= 64 ~ 13,
+  Edad >= 65 & Edad <= 69 ~ 14,
+  Edad >= 70 & Edad <= 74 ~ 15,
+  Edad >= 75 & Edad <= 79 ~ 16,
+  Edad >= 80  ~ 17
+))
+
+
+### SUBSET POBLACION ANTOFAGASTA
+poblacion_antofagasta <- as.data.frame(subset(poblacion_ine, Comuna == 2101))
+
+### GROUPBY INE ANTOFAGASTA
+poblacion_antofagasta_edad <- as.data.frame(poblacion_antofagasta) %>% group_by(AGE_GROUP) %>% 
+  #(`Poblacion 2003`)
+  summarise(pob_2003 = sum(`Poblacion 2003`),
+            pob_2004 = sum(`Poblacion 2004`),
+            pob_2005 = sum(`Poblacion 2005`),
+            pob_2006 = sum(`Poblacion 2006`),
+            pob_2007 = sum(`Poblacion 2007`),
+            pob_2008 = sum(`Poblacion 2008`),
+            pob_2009 = sum(`Poblacion 2009`),
+            pob_2010 = sum(`Poblacion 2010`),
+            pob_2011 = sum(`Poblacion 2011`),
+            pob_2012 = sum(`Poblacion 2012`),
+            pob_2013 = sum(`Poblacion 2013`),
+            pob_2014 = sum(`Poblacion 2014`),
+            pob_2015 = sum(`Poblacion 2015`),
+            )
+
+```
+
+```{r, trasponer_data_poblacion_afta, echo=F, include=F}
+### CREAR UN NUEVO DATAFRAME CON LA POBLACION POR ANO Y GRUPO DE EDAD
+posicion = 2
+year = 2003
+data_poblacion = data.frame()
+for (i in colnames(poblacion_antofagasta_edad[2:14])) {
+  dataframe <- poblacion_antofagasta_edad[posicion]
+  dataframe$YEAR_DIAG <- year
+  dataframe$AGE_GROUP <- poblacion_antofagasta_edad$AGE_GROUP
+  dataframe = rename(dataframe, 'POB' = i)
+  posicion = posicion + 1
+  year = year + 1
+  data_poblacion <- rbind(data_poblacion, dataframe)
+}   
+```
+
+```{r, merge_data_poblacion_con_data_by_mes_year_afta, include=F, echo=F}
+data_poblacion_tasa <- merge(by_age_year, data_poblacion, by = c('AGE_GROUP', 'YEAR_DIAG'))
+data_poblacion_tasa <- data_poblacion_tasa %>% arrange(YEAR_DIAG, AGE_GROUP)
+```
+
+```{r,calculo_tasa_incidencia_ajsutada_edad_afta, echo=F}
+
+data_poblacion_tasa$EXPECTED_CASES <- data_poblacion_tasa$n * data_poblacion_tasa$POB_STANDAR / data_poblacion_tasa$POB
+data_poblacion_tasa_ajustada <- data_poblacion_tasa %>% group_by(YEAR_DIAG) %>% summarise('TASA_AJUSTADA' = sum(EXPECTED_CASES)) 
+data_poblacion_tasa_ajustada_cafta <- data_poblacion_tasa_ajustada
+data_poblacion_tasa_ajustada_cafta
+```
+
+### Gráfico de la tasa de incidencia de cáncer de Piel (no melanoma), ajustada por edad en Comuna de Antofagasta
+```{r, plot_tasa_ajustada_afta, echo=F}
+plot(data_poblacion_tasa_ajustada_cafta,
+     ylim=c(35,100),
+     ylab="Tasa incidencia ajustada por 100 mil",
+     xlab="Años", 
+     main="Tasas de incidencia por cáncer de Piel, comuna de Antofagasta", 
+     type="b")
+```
+
+
+
+
+
+------------------------------------------------------------------------------
+
+
+# Comuna de Calama
+
+```{r, filtro_base_Calama, echo=F, include=F}
+bd_2 <- subset(bd_, REGCOM=='02201')
+```
+
+
+### Número de casos por sexo, Comuna de Calama
+
+```{r, casos_sexo_Calama, echo=F}
+table(factor(bd_2$SEXO, levels=c(1,2), labels = c("Hombres", "Mujeres")))
+```
+
+### Proporción de casos por sexo, comuna de Calama
+
+```{r, proporcion_sexo_Calama, echo=F}
+round(prop.table(table(factor(bd_2$SEXO, levels=c(1,2), labels = c("Hombres", "Mujeres"))))*100,2)
+```
+
+### Casos según morfología, comuna de Calama
+
+```{r, casos_morfologia_Calama, echo=F}
+morfologia = table(factor(bd_2$MORF_GRUPO,
+             levels = c(1,2,3), 
+             labels = c("Neoplasias de células escamosas", 
+                        "Neoplasias de células basales", 
+                        "Otras morfologías")))
+
+morfologia
+#table(bd_2$MORF_GRUPO)
+```
+
+### Proporción de casos según morfología, comuna de Calama
+
+```{r, ppcion_morfologia_Calama ,echo=F}
+round(prop.table(morfologia),3)*100
+```
+
+### Casos según diferenciacion tumores, comuna de Calama
+
+```{r, casos_diferenciacion_Calama, echo=F}
+table(factor(bd_2$GRA, levels = c(1,2,3,4,9), labels = 
+               c("Bien Diferenciado","Moderadamente Diferenciados",
+                 "Poco Diferenciado","Anaplásico","Desconocido")))
+
+#table(bd_2$GRA)
+```
+
+### Proporción de casos según diferenciación, Comuna de Calama
+
+```{r, ppcion_difenciacion_Calama, echo=F}
+round(prop.table(table(factor(
+              bd_2$GRA, 
+              levels = c(1,2,3,4,9), 
+              labels = 
+               c("Bien Diferenciado","Moderadamente Diferenciados",
+                 "Poco Diferenciado","Anaplásico","Desconocido") 
+  )))*100,2)
+
+```
+
+### Casos según extensión tumoral, Comuna de Calama
+
+```{r, casos_extension_Calama, echo=F}
+table(factor(bd_2$EXT, levels = c(1,2,3,9), labels = c(
+  "Localizado","Regional","Metástasis","Desconocido"
+)))
+
+#table(bd_2$EXT)
+```
+
+### Proporción de casos según extensión tumoral, Comuna de Calama
+
+```{r, ppcion_extension_Calama, echo=F}
+round(prop.table(table(factor(bd_2$EXT, levels = c(1,2,3,9),
+                              labels=c(                                "Localizado","Regional","Metástasis","Desconocido"  
+                              )
+                              )))*100,2)
+```
+
+### Casos según base diagnóstico, Comuna de Calama
+
+```{r, casos_base_Calama, echo=F}
+table(factor(bd_2$BASE, levels = c(0,1,6,7),
+             labels = c("Solo DCO",
+                        "Clínica",
+                        "Histología de MTS",
+                        "Histología de sitio primario")
+             ))
+#table(bd_2$BASE)
+```
+
+### Proporción de casos según base diagnóstico, Comuna de Calama
+
+```{r, ppcion_base_Calama, echo=F}
+round(prop.table(table(factor(bd_2$BASE, levels = c(0,1,
+                                                         6,7), 
+                              labels = c(
+                                "Solo DCO",
+                                "Clínica",
+                                "Histología de MTS",
+                                "Histología de sitio primario"
+                              ))
+                              ))*100,2)
+```
+
+```{r, _Calama, echo=F, include=F}
+## PRIMARIO MÚLTIPLES
+### HAY 134 NA, TRATAR DE ARREGLAR EN LA BASE DE CR5
+addmargins(table(bd_2$PMTOT))
+```
+
+
+------------------------------------------------------------------------
+
+
+## Estadística descriptiva univariada cuantitativa, Vejiga Comuna de Calama
+
+
+------------------------------------------------------------------------
+
+### Edad, Comuna de Calama
+```{r, descriptiva_cuanti_Calama, echo=F}
+bd_2 %>% summarise(
+  Mínimo = min(EDAD),
+  Máximo = max(EDAD),
+  Rango = max(EDAD)-min(EDAD),
+  Qu_25 = quantile(EDAD, prob=c(0.25)),
+  Qu_50 = quantile(EDAD, prob=c(0.5)),
+  Qu_75 = quantile(EDAD, prob=c(0.75)),
+  Media = round(mean(EDAD),4),
+  Mediana = median(EDAD),
+  Varianza = round(var(EDAD),4),
+  Desv_Estándar = round(sd(EDAD),4),
+  CV = round(sd(EDAD)/mean(EDAD)*100,4)
+)
+```
+
+### Histrograma edad, Comuna de Calama
+```{r, histograma_edad_Calama, echo=F}
+hist(bd_2$EDAD,
+     ylab="Frecuencia",
+     xlab="Edad",
+     main="Histograma Edad")
+```
+
+### Gráfico de densidad edad, Comuna de Calama
+```{r, density_plot_Calama, echo=F}
+plot(density(bd_2$EDAD),
+     lwd=3,
+     col="blue3",
+     xlim = c(15, 100),
+     main="Gráfico de densidad de la Edad",
+     las=1,
+     xlab="Edad",
+     ylab="densidad")
+```
+
+### Normal QQ, Comuna de Calama
+```{r, normal_qq_edad_Calama, echo=F}
+qqnorm(bd_2$EDAD, pch=20, main="QQ Edad")
+qqline(bd_2$EDAD)
+
+```
+
+### Test de normalidad de Shapiro-Wilk, Comuna de Calama
+```{r, shapiro_test_edad_Calama, echo=F}
+# H0 = la muestra proviene de una población normal
+shapiro.test(bd_2$EDAD)
+
+```
+
+
+------------------------------------------------------------------------
+
+
+## Estadística descriptiva Bivariada, comuna de Calama
+
+
+------------------------------------------------------------------------
+
+### Número de casos por sexo y morfología, comuna de Calama
+```{r, sexo_morfologia_Calama, echo=F}
+sexo_morfologia <- table(factor(bd_2$MORF_GRUPO, 
+                                levels=c(1,2,3), 
+                               labels = c("Neoplasias de células escamosas", 
+                                           "Neoplasias de células basales", 
+                                           "Otras morfologías")),
+                         factor(bd_2$SEXO, 
+                                levels = c('1','2'), 
+                                labels = c('Hombres', 'Mujeres')))
+addmargins(sexo_morfologia)
+
+```
+
+### Proporción de casos por sexo y morfología, comuna de Calama
+```{r, ppcion_sexo_morfologia_Calama, echo=F}
+round(addmargins(prop.table(sexo_morfologia,1),2),4)*100
+```
+
+### Número de casos por sexo y extensión tumoral, comuna de Calama
+```{r, sexo_extension_Calama, echo=F}
+sexo_extension <- table(factor(bd_2$EXT, 
+                               levels=c(1,2,3,9),
+                               labels = c("Localizado",
+                                          "Regional",
+                                          "Metástasis",
+                                          "Desconocido")),
+                        factor(bd_2$SEXO, 
+                               levels = c('1','2'), 
+                               labels = c('Hombres', 
+                                          'Mujeres')
+                        ))
+addmargins(sexo_extension)
+```
+
+### Proporción de casos por sexo y extensión tumoral, Comuna de Calama
+```{r, ppcion_sexo_extension_Calama, echo=F}
+round(addmargins(prop.table(sexo_extension,1),2),4)*100
+```
+
+### Número de casos por sexo y base diagnóstica, comuna de Calama
+```{r, sexo_base_Calama, echo=F}
+sexo_base <- table(factor(bd_2$BASE, 
+                               levels=c(0,1,6,7),
+                               labels = c("Solo DCO",
+                                          "Clínico",
+                                          "Histología de Metástasis",
+                                          "Histología de sitio primario")),
+                        factor(bd_2$SEXO, 
+                               levels = c('1','2'), 
+                               labels = c('Hombres', 'Mujeres')
+                   ))
+addmargins(sexo_base)
+```
+
+### Proporción de casos por sexo y base diagnóstica, comuna de Calama
+```{r, ppcion_sexo_base_Calama, echo=F}
+round(addmargins(prop.table(sexo_base,1),2),4)*100
+```
+
+### Número de casos por Morfología y base diagnóstica, comuna de Calama
+```{r, morfologia_base_Calama, echo=F}
+morfologia_base <- table(factor(bd_2$MORF_GRUPO, 
+                                levels=c(1,2,3), 
+                                labels = c("Neoplasias de células escamosas", 
+                                           "Neoplasias de células basales", 
+                                           "Otras morfologías")),
+  
+                          factor(bd_2$BASE, 
+                               levels=c(0,1,6,7),
+                               labels = c("Solo DCO",
+                                          "Clínico",
+                                          "Histología de Metástasis",
+                                          "Histología de sitio primario")))
+
+addmargins(morfologia_base)
+```
+
+### Proporción de casos por Morfología y base diagnóstica, comuna de Calama
+```{r, ppcion_morfologia_base_Calama, echo=F}
+round(addmargins(prop.table(morfologia_base,1),2),4)*100
+```
+
+### Número de casos por Morfología y Extensión, comuna de Calama
+```{r, morfologia_extension_Calama, echo=F}
+morfologia_extension <- table(factor(bd_2$MORF_GRUPO, 
+                                levels=c(1,2,3), 
+                                labels = c("Neoplasias de células escamosas", 
+                                           "Neoplasias de células basales", 
+                                           "Otras morfologías")),
+                              factor(bd_2$EXT, 
+                               levels=c(1,2,3,9),
+                               labels = c("Localizado",
+                                          "Regional",
+                                          "Metástasis",
+                                          "Desconocido")))
+                        
+
+addmargins(morfologia_extension)
+```
+
+### Proporción de casos por Morfología y Extensión, comuna de Calama
+```{r, ppcion_morfologia_extension_Calama, echo=F}
+round(addmargins(prop.table(morfologia_extension,1),2),4)*100
+```
+
+
+### Número de casos por Extensión y Base diagnóstica, comuna de Calama
+```{r, extension_base_Calama, echo=F}
+extension_base <- table(
+                        factor(bd_2$EXT, 
+                               levels=c(1,2,3,9),
+                               labels = c("Localizado",
+                                          "Regional",
+                                          "Metástasis",
+                                          "Desconocido")),
+                       factor(bd_2$BASE, 
+                               levels=c(0,1,6,7),
+                               labels = c("Solo DCO",
+                                          "Clínico",
+                                          "Histología de Metástasis",
+                                          "Histología de sitio primario"))
+                         )
+
+addmargins(extension_base)
+```
+
+### Proporción de casos por Extensión y Base diagnóstica, filas, comuna de Calama
+```{r, extension_base_filas_Calama, echo=F}
+round(addmargins(prop.table(extension_base,1),2),4)*100
+```
+
+### Proporción de casos por Extensión y Base diagnóstica, columnas, Comuna de Calama
+```{r, extension_base_columnas_Calama, echo=F}
+round(addmargins(prop.table(extension_base,2),1),4)*100
+```
+
+
+### Edad - Sexo
+#### Boxplot edad vs sexo, Comuna de Calama
+```{r,box_plot_sexo_edad_Calama ,echo=F}
+boxplot(bd_2$EDAD ~ factor(bd_2$SEXO, 
+                      levels = c(1,2), 
+                      labels = c("Hombres", "Mujeres")),
+        xlab = "Sexo",
+        ylab = "Edad",
+        main="Edad por sexo, comuna de Calama")
+```
+
+
+### Boxplot edad - morfologia, Comuna de Calama
+```{r,box_plot_edad_morfologia_Calama ,echo=F}
+boxplot(bd_2$EDAD ~ factor(bd_2$MORF_GRUPO, 
+                                levels = c(1,2,3),
+                                labels = c("Neoplasias de células escamosas", 
+                                           "Neoplasias de células basales", 
+                                           "Otras morfologías")),
+        xlab="Morfología",
+        ylab="Edad",
+        main="Edad por morfología, comuna de Calama"
+        )
+```
+
+### Boxplot edad - extension, Comuna de Calama
+```{r,box_plot_edad_extension_Calama ,echo=F}
+boxplot(bd_2$EDAD ~ factor(bd_2$EXT, 
+                                levels = c(1,2,3,9),
+                                labels = c("Localizado",
+                                           "Regional",
+                                           "Metástasis",
+                                           "Desconocido")),
+        xlab="Extensión",
+        ylab="Edad",
+        main="Edad por Extensión, comuna de Calama")
+                                
+```
+
+### Boxplot edad - base diagnóstica, Comuna de Calama
+```{r,box_plot_edad_base_Calama ,echo=F}
+boxplot(bd_2$EDAD ~ factor(bd_2$BASE, 
+                                levels = c(0,1,6,7),
+                                labels = c("Solo DCO",
+                                           "Clínico",
+                                           "MTS",
+                                           "Sitio primario")),
+        xlab="Base Diagnóstica",
+        ylab="Edad",
+        main="Edad por Base diagnóstica, comuna de Calama")
+```
+
+
+## Tasa de incidencia ajustada por año, Comuna de Calama
+```{r, preparar_la_base_Calama, echo=F, include=F}
+### CREAR LA VARIABLE AGE_GROUP
+bd_2 <- bd_2 %>% mutate(AGE_GROUP = case_when(
+  EDAD >= 0 & EDAD <= 4 ~ 1,
+  EDAD >= 5 & EDAD <= 9 ~ 2,
+  EDAD >= 10 & EDAD <= 14 ~ 3,
+  EDAD >= 15 & EDAD <= 19 ~ 4,
+  EDAD >= 20 & EDAD <= 24 ~ 5,
+  EDAD >= 25 & EDAD <= 29 ~ 6,
+  EDAD >= 30 & EDAD <= 34 ~ 7,
+  EDAD >= 35 & EDAD <= 39 ~ 8,
+  EDAD >= 40 & EDAD <= 44 ~ 9,
+  EDAD >= 45 & EDAD <= 49 ~ 10,
+  EDAD >= 50 & EDAD <= 54 ~ 11,
+  EDAD >= 55 & EDAD <= 59 ~ 12,
+  EDAD >= 60 & EDAD <= 64 ~ 13,
+  EDAD >= 65 & EDAD <= 69 ~ 14,
+  EDAD >= 70 & EDAD <= 74 ~ 15,
+  EDAD >= 75 & EDAD <= 79 ~ 16,
+  EDAD >= 80  ~ 17
+))
+
+### CREAR LA VARIABLE YEAR Y MES
+library(tidyverse)
+
+year <- ""
+mes <- ""
+contador <- 1   
+for(i in bd_2$FECDIAG){
+  year[[contador]] <- as.integer(str_sub(i, 1, 4))
+  mes[[contador]] <- as.integer(str_sub(i,5,6))
+  contador <- contador +  1
+}  
+
+bd_2$YEAR_DIAG <- as.integer(year)
+bd_2$MES_DIAG <- as.integer(mes)
+```
+
+```{r, group_by_TIA_Calama, echo=F, include=F}
+
+by_age_year <- bd_2 %>% group_by(YEAR_DIAG, AGE_GROUP) %>% count()
+
+```
+
+```{r, poblaciones_Calama, echo=F, include=F}
+### AGREGAR POBLACION ESTANDAR
+by_age_year = by_age_year %>% mutate(POB_STANDAR = case_when(
+  AGE_GROUP == 1 ~ 12000,
+  AGE_GROUP == 2 ~ 10000,
+  AGE_GROUP == 3 ~ 9000,
+  AGE_GROUP == 4 ~ 9000,
+  AGE_GROUP == 5 ~ 8000,
+  AGE_GROUP == 6 ~ 8000,
+  AGE_GROUP == 7 ~ 6000,
+  AGE_GROUP == 8 ~ 6000,
+  AGE_GROUP == 9 ~ 6000,
+  AGE_GROUP == 10 ~ 6000,
+  AGE_GROUP == 11 ~ 5000,
+  AGE_GROUP == 12 ~ 4000,
+  AGE_GROUP == 13 ~ 4000,
+  AGE_GROUP == 14 ~ 3000,
+  AGE_GROUP == 15 ~ 2000,
+  AGE_GROUP == 16 ~ 1000,
+  AGE_GROUP == 17 ~ 1000
+))
+
+### CARGAR POBLACION INE
+library(readxl)
+if (Sys.info()[['sysname']] == "Darwin"){
+  #poblacion_ine <- read_delim("/Users/alvaro/Documents/Data_Science/R/proyecto_grado/cr5_18052022.txt", 
+    #delim = "\t", escape_double = FALSE, 
+    #trim_ws = TRUE)
+} else {
+   poblacion_ine <- read_excel("D:/Datasets/poblacion/pob_ine_censo2017_proyecciones.xlsx")
+}
+
+
+### AGE GROUP EN LA POBLACION INE
+poblacion_ine <- poblacion_ine %>% mutate(AGE_GROUP = case_when(
+  Edad >= 0 & Edad <= 4 ~ 1,
+  Edad >= 5 & Edad <= 9 ~ 2,
+  Edad >= 10 & Edad <= 14 ~ 3,
+  Edad >= 15 & Edad <= 19 ~ 4,
+  Edad >= 20 & Edad <= 24 ~ 5,
+  Edad >= 25 & Edad <= 29 ~ 6,
+  Edad >= 30 & Edad <= 34 ~ 7,
+  Edad >= 35 & Edad <= 39 ~ 8,
+  Edad >= 40 & Edad <= 44 ~ 9,
+  Edad >= 45 & Edad <= 49 ~ 10,
+  Edad >= 50 & Edad <= 54 ~ 11,
+  Edad >= 55 & Edad <= 59 ~ 12,
+  Edad >= 60 & Edad <= 64 ~ 13,
+  Edad >= 65 & Edad <= 69 ~ 14,
+  Edad >= 70 & Edad <= 74 ~ 15,
+  Edad >= 75 & Edad <= 79 ~ 16,
+  Edad >= 80  ~ 17
+))
+
+
+### SUBSET POBLACION ANTOFAGASTA
+poblacion_antofagasta <- as.data.frame(subset(poblacion_ine, Comuna == 2201))
+
+### GROUPBY INE ANTOFAGASTA
+poblacion_antofagasta_edad <- as.data.frame(poblacion_antofagasta) %>% group_by(AGE_GROUP) %>% 
+  #(`Poblacion 2003`)
+  summarise(pob_2003 = sum(`Poblacion 2003`),
+            pob_2004 = sum(`Poblacion 2004`),
+            pob_2005 = sum(`Poblacion 2005`),
+            pob_2006 = sum(`Poblacion 2006`),
+            pob_2007 = sum(`Poblacion 2007`),
+            pob_2008 = sum(`Poblacion 2008`),
+            pob_2009 = sum(`Poblacion 2009`),
+            pob_2010 = sum(`Poblacion 2010`),
+            pob_2011 = sum(`Poblacion 2011`),
+            pob_2012 = sum(`Poblacion 2012`),
+            pob_2013 = sum(`Poblacion 2013`),
+            pob_2014 = sum(`Poblacion 2014`),
+            pob_2015 = sum(`Poblacion 2015`),
+            )
+
+```
+
+```{r, trasponer_data_poblacion_Calama, echo=F, include=F}
+### CREAR UN NUEVO DATAFRAME CON LA POBLACION POR ANO Y GRUPO DE EDAD
+posicion = 2
+year = 2003
+data_poblacion = data.frame()
+for (i in colnames(poblacion_antofagasta_edad[2:14])) {
+  dataframe <- poblacion_antofagasta_edad[posicion]
+  dataframe$YEAR_DIAG <- year
+  dataframe$AGE_GROUP <- poblacion_antofagasta_edad$AGE_GROUP
+  dataframe = rename(dataframe, 'POB' = i)
+  posicion = posicion + 1
+  year = year + 1
+  data_poblacion <- rbind(data_poblacion, dataframe)
+}   
+```
+
+```{r, merge_data_poblacion_con_data_by_mes_year_Calama, include=F, echo=F}
+data_poblacion_tasa <- merge(by_age_year, data_poblacion, by = c('AGE_GROUP', 'YEAR_DIAG'))
+data_poblacion_tasa <- data_poblacion_tasa %>% arrange(YEAR_DIAG, AGE_GROUP)
+```
+
+```{r,calculo_tasa_incidencia_ajsutada_edad_Calama, echo=F}
+
+data_poblacion_tasa$EXPECTED_CASES <- data_poblacion_tasa$n * data_poblacion_tasa$POB_STANDAR / data_poblacion_tasa$POB
+data_poblacion_tasa_ajustada <- data_poblacion_tasa %>% group_by(YEAR_DIAG) %>% summarise('TASA_AJUSTADA' = sum(EXPECTED_CASES)) 
+data_poblacion_tasa_ajustada_calama <- data_poblacion_tasa_ajustada
+data_poblacion_tasa_ajustada_calama
+```
+
+### Gráfico de la tasa de incidencia de cáncer de piel (No melanoma), ajustada por edad en Comuna de Calama
+```{r, plot_tasa_ajustada_Calama, echo=F}
+plot(data_poblacion_tasa_ajustada_calama,
+     ylim=c(0,60),
+     ylab="Tasa incidencia ajustada por 100 mil",
+     xlab="Años", 
+     main="Tasas de incidencia por cáncer de piel, comuna de Calama", 
+     type="b")
+```
+
+
+
+
+# Comuna de Tocopilla
+
+```{r, filtro_base_Tocopilla, echo=F, include=F}
+bd_3 <- subset(bd_, REGCOM=='02301')
+```
+
+
+### Número de casos por sexo, Comuna de Tocopilla
+
+```{r, casos_sexo_Tocopilla, echo=F}
+table(factor(bd_3$SEXO, levels=c(1,2), labels = c("Hombres", "Mujeres")))
+```
+
+### Proporción de casos por sexo, comuna de Tocopilla
+
+```{r, proporcion_sexo_Tocopilla, echo=F}
+round(prop.table(table(factor(bd_3$SEXO, levels=c(1,2), labels = c("Hombres", "Mujeres"))))*100,2)
+```
+
+### Casos según morfología, comuna de Tocopilla
+
+```{r, casos_morfologia_Tocopilla, echo=F}
+morfologia = table(factor(bd_3$MORF_GRUPO,
+             levels = c(1,2,3), 
+             labels = c("Neoplasias de células escamosas", 
+                                           "Neoplasias de células basales", 
+                                           "Otras morfologías")))
+
+morfologia
+#table(bd_3$MORF_GRUPO)
+```
+
+### Proporción de casos según morfología, comuna de Tocopilla
+
+```{r, ppcion_morfologia_Tocopilla ,echo=F}
+round(prop.table(morfologia),3)*100
+```
+
+### Casos según diferenciacion tumores, comuna de Tocopilla
+
+```{r, casos_diferenciacion_Tocopilla, echo=F}
+table(factor(bd_3$GRA, levels = c(1,2,3,4,9), labels = 
+               c("Bien Diferenciado","Moderadamente Diferenciados",
+                 "Poco Diferenciado","Anaplásico","Desconocido")))
+
+#table(bd_3$GRA)
+```
+
+### Proporción de casos según diferenciación, Comuna de Tocopilla
+
+```{r, ppcion_difenciacion_Tocopilla, echo=F}
+round(prop.table(table(factor(
+              bd_3$GRA, 
+              levels = c(1,2,3,4,9), 
+              labels = 
+               c("Bien Diferenciado","Moderadamente Diferenciados",
+                 "Poco Diferenciado","Anaplásico","Desconocido") 
+  )))*100,2)
+
+```
+
+### Casos según extensión tumoral, Comuna de Tocopilla
+
+```{r, casos_extension_Tocopilla, echo=F}
+table(factor(bd_3$EXT, levels = c(1,2,3,9), labels = c(
+  "Localizado","Regional","Metástasis","Desconocido"
+)))
+
+#table(bd_3$EXT)
+```
+
+### Proporción de casos según extensión tumoral, Comuna de Tocopilla
+
+```{r, ppcion_extension_Tocopilla, echo=F}
+round(prop.table(table(factor(bd_3$EXT, levels = c(1,2,3,9),
+                              labels=c(                                "Localizado","Regional","Metástasis","Desconocido"  
+                              )
+                              )))*100,2)
+```
+
+### Casos según base diagnóstico, Comuna de Tocopilla
+
+```{r, casos_base_Tocopilla, echo=F}
+table(factor(bd_3$BASE, levels = c(0,1,6,7),
+             labels = c("Solo DCO",
+                        "Clínica",
+                        "Histología de MTS",
+                        "Histología de sitio primario")
+             ))
+#table(bd_3$BASE)
+```
+
+### Proporción de casos según base diagnóstico, Comuna de Tocopilla
+
+```{r, ppcion_base_Tocopilla, echo=F}
+round(prop.table(table(factor(bd_3$BASE, levels = c(0,1,
+                                                         6,7), 
+                              labels = c(
+                                "Solo DCO",
+                                "Clínica",
+                                "Histología de MTS",
+                                "Histología de sitio primario"
+                              ))
+                              ))*100,2)
+```
+
+```{r, _Tocopilla, echo=F, include=F}
+## PRIMARIO MÚLTIPLES
+### HAY 134 NA, TRATAR DE ARREGLAR EN LA BASE DE CR5
+addmargins(table(bd_3$PMTOT))
+```
+
+
+------------------------------------------------------------------------
+
+
+## Estadística descriptiva univariada cuantitativa, Vejiga. Comuna de Tocopilla
+
+
+------------------------------------------------------------------------
+
+### Edad, Comuna de Tocopilla
+```{r, descriptiva_cuanti_Tocopilla, echo=F}
+bd_3 %>% summarise(
+  Mínimo = min(EDAD),
+  Máximo = max(EDAD),
+  Rango = max(EDAD)-min(EDAD),
+  Qu_25 = quantile(EDAD, prob=c(0.25)),
+  Qu_50 = quantile(EDAD, prob=c(0.5)),
+  Qu_75 = quantile(EDAD, prob=c(0.75)),
+  Media = round(mean(EDAD),4),
+  Mediana = median(EDAD),
+  Varianza = round(var(EDAD),4),
+  Desv_Estándar = round(sd(EDAD),4),
+  CV = round(sd(EDAD)/mean(EDAD)*100,4)
+)
+```
+
+### Histrograma edad, Comuna de Tocopilla
+```{r, histograma_edad_Tocopilla, echo=F}
+hist(bd_3$EDAD,
+     ylab="Frecuencia",
+     xlab="Edad",
+     main="Histograma Edad")
+```
+
+### Gráfico de densidad edad, Comuna de Tocopilla
+```{r, density_plot_Tocopilla, echo=F}
+plot(density(bd_3$EDAD),
+     lwd=3,
+     col="blue3",
+     xlim = c(15, 100),
+     main="Gráfico de densidad de la Edad",
+     las=1,
+     xlab="Edad",
+     ylab="densidad")
+```
+
+### Normal QQ, Comuna de Tocopilla
+```{r, normal_qq_edad_Tocopilla, echo=F}
+qqnorm(bd_3$EDAD, pch=20, main="QQ Edad")
+qqline(bd_3$EDAD)
+
+```
+
+### Test de normalidad de Shapiro-Wilk, Comuna de Tocopilla
+```{r, shapiro_test_edad_Tocopilla, echo=F}
+# H0 = la muestra proviene de una población normal
+shapiro.test(bd_3$EDAD)
+
+```
+
+
+------------------------------------------------------------------------
+
+
+## Estadística descriptiva Bivariada, comuna de Tocopilla
+
+
+------------------------------------------------------------------------
+
+### Número de casos por sexo y morfología, comuna de Tocopilla
+```{r, sexo_morfologia_Tocopilla, echo=F}
+sexo_morfologia <- table(factor(bd_3$MORF_GRUPO, 
+                                levels=c(1,2,3), 
+                                labels = c("Neoplasias de células escamosas", 
+                                           "Neoplasias de células basales", 
+                                           "Otras morfologías")),
+                         factor(bd_3$SEXO, 
+                                levels = c('1','2'), 
+                                labels = c('Hombres', 'Mujeres')))
+addmargins(sexo_morfologia)
+
+```
+
+### Proporción de casos por sexo y morfología, comuna de Tocopilla
+```{r, ppcion_sexo_morfologia_Tocopilla, echo=F}
+round(addmargins(prop.table(sexo_morfologia,1),2),4)*100
+```
+
+### Número de casos por sexo y extensión tumoral, comuna de Tocopilla
+```{r, sexo_extension_Tocopilla, echo=F}
+sexo_extension <- table(factor(bd_3$EXT, 
+                               levels=c(1,2,3,9),
+                               labels = c("Localizado",
+                                          "Regional",
+                                          "Metástasis",
+                                          "Desconocido")),
+                        factor(bd_3$SEXO, 
+                               levels = c('1','2'), 
+                               labels = c('Hombres', 
+                                          'Mujeres')
+                        ))
+addmargins(sexo_extension)
+```
+
+### Proporción de casos por sexo y extensión tumoral, Comuna de Tocopilla
+```{r, ppcion_sexo_extension_Tocopilla, echo=F}
+round(addmargins(prop.table(sexo_extension,1),2),4)*100
+```
+
+### Número de casos por sexo y base diagnóstica, comuna de Tocopilla
+```{r, sexo_base_Tocopilla, echo=F}
+sexo_base <- table(factor(bd_3$BASE, 
+                               levels=c(0,1,6,7),
+                               labels = c("Solo DCO",
+                                          "Clínico",
+                                          "Histología de Metástasis",
+                                          "Histología de sitio primario")),
+                        factor(bd_3$SEXO, 
+                               levels = c('1','2'), 
+                               labels = c('Hombres', 'Mujeres')
+                   ))
+addmargins(sexo_base)
+```
+
+### Proporción de casos por sexo y base diagnóstica, comuna de Tocopilla
+```{r, ppcion_sexo_base_Tocopilla, echo=F}
+round(addmargins(prop.table(sexo_base,1),2),4)*100
+```
+
+### Número de casos por Morfología y base diagnóstica, comuna de Tocopilla
+```{r, morfologia_base_Tocopilla, echo=F}
+morfologia_base <- table(factor(bd_3$MORF_GRUPO, 
+                                levels=c(1,2,3), 
+                                labels = c("Neoplasias de células escamosas", 
+                                           "Neoplasias de células basales", 
+                                           "Otras morfologías")),
+  
+                          factor(bd_3$BASE, 
+                               levels=c(0,1,6,7),
+                               labels = c("Solo DCO",
+                                          "Clínico",
+                                          "Histología de Metástasis",
+                                          "Histología de sitio primario")))
+
+addmargins(morfologia_base)
+```
+
+### Proporción de casos por Morfología y base diagnóstica, comuna de Tocopilla
+```{r, ppcion_morfologia_base_Tocopilla, echo=F}
+round(addmargins(prop.table(morfologia_base,1),2),4)*100
+```
+
+### Número de casos por Morfología y Extensión, comuna de Tocopilla
+```{r, morfologia_extension_Tocopilla, echo=F}
+morfologia_extension <- table(factor(bd_3$MORF_GRUPO, 
+                                levels=c(1,2,3), 
+                                labels = c("Neoplasias de células escamosas", 
+                                           "Neoplasias de células basales", 
+                                           "Otras morfologías")),
+                              factor(bd_3$EXT, 
+                               levels=c(1,2,3,9),
+                               labels = c("Localizado",
+                                          "Regional",
+                                          "Metástasis",
+                                          "Desconocido")))
+                        
+
+addmargins(morfologia_extension)
+```
+
+### Proporción de casos por Morfología y Extensión, comuna de Tocopilla
+```{r, ppcion_morfologia_extension_Tocopilla, echo=F}
+round(addmargins(prop.table(morfologia_extension,1),2),4)*100
+```
+
+
+### Número de casos por Extensión y Base diagnóstica, comuna de Tocopilla
+```{r, extension_base_Tocopilla, echo=F}
+extension_base <- table(
+                        factor(bd_3$EXT, 
+                               levels=c(1,2,3,9),
+                               labels = c("Localizado",
+                                          "Regional",
+                                          "Metástasis",
+                                          "Desconocido")),
+                       factor(bd_3$BASE, 
+                               levels=c(0,1,6,7),
+                               labels = c("Solo DCO",
+                                          "Clínico",
+                                          "Histología de Metástasis",
+                                          "Histología de sitio primario"))
+                         )
+
+addmargins(extension_base)
+```
+
+### Proporción de casos por Extensión y Base diagnóstica, filas, comuna de Tocopilla
+```{r, extension_base_filas_Tocopilla, echo=F}
+round(addmargins(prop.table(extension_base,1),2),4)*100
+```
+
+### Proporción de casos por Extensión y Base diagnóstica, columnas, Comuna de Tocopilla
+```{r, extension_base_columnas_Tocopilla, echo=F}
+round(addmargins(prop.table(extension_base,2),1),4)*100
+```
+
+
+### Edad - Sexo
+#### Boxplot edad vs sexo, Comuna de Tocopilla
+```{r,box_plot_sexo_edad_Tocopilla ,echo=F}
+boxplot(bd_3$EDAD ~ factor(bd_3$SEXO, 
+                      levels = c(1,2), 
+                      labels = c("Hombres", "Mujeres")),
+        xlab = "Sexo",
+        ylab = "Edad",
+        main="Edad por sexo, comuna de Tocopilla")
+```
+
+
+### Boxplot edad - morfologia, Comuna de Tocopilla
+```{r,box_plot_edad_morfologia_Tocopilla ,echo=F}
+boxplot(bd_3$EDAD ~ factor(bd_3$MORF_GRUPO, 
+                                levels = c(1,2,3),
+                                labels = c("Neoplasia, SAI",
+                                           "Carcinomas de cél trans",
+                                           "Otras Morf."
+                                           )),
+        xlab="Morfología",
+        ylab="Edad",
+        main="Edad por morfología, comuna de Tocopilla"
+        )
+```
+
+### Boxplot edad - extension, Comuna de Tocopilla
+```{r,box_plot_edad_extension_Tocopilla ,echo=F}
+boxplot(bd_3$EDAD ~ factor(bd_3$EXT, 
+                                levels = c(1,2,3,9),
+                                labels = c("Localizado",
+                                           "Regional",
+                                           "Metástasis",
+                                           "Desconocido")),
+        xlab="Extensión",
+        ylab="Edad",
+        main="Edad por Extensión, comuna de Tocopilla")
+                                
+```
+
+### Boxplot edad - base diagnóstica, Comuna de Tocopilla
+```{r,box_plot_edad_base_Tocopilla ,echo=F}
+boxplot(bd_3$EDAD ~ factor(bd_3$BASE, 
+                                levels = c(0,1,6,7),
+                                labels = c("Solo DCO",
+                                           "Clínico",
+                                           "MTS",
+                                           "Sitio primario")),
+        xlab="Base Diagnóstica",
+        ylab="Edad",
+        main="Edad por Base diagnóstica, comuna de Tocopilla")
+
+```
+
+
+## Tasa de incidencia ajustada por año, Comuna de Tocopilla
+```{r, preparar_la_base_Tocopilla, echo=F, include=F}
+### CREAR LA VARIABLE AGE_GROUP
+bd_3 <- bd_3 %>% mutate(AGE_GROUP = case_when(
+  EDAD >= 0 & EDAD <= 4 ~ 1,
+  EDAD >= 5 & EDAD <= 9 ~ 2,
+  EDAD >= 10 & EDAD <= 14 ~ 3,
+  EDAD >= 15 & EDAD <= 19 ~ 4,
+  EDAD >= 20 & EDAD <= 24 ~ 5,
+  EDAD >= 25 & EDAD <= 29 ~ 6,
+  EDAD >= 30 & EDAD <= 34 ~ 7,
+  EDAD >= 35 & EDAD <= 39 ~ 8,
+  EDAD >= 40 & EDAD <= 44 ~ 9,
+  EDAD >= 45 & EDAD <= 49 ~ 10,
+  EDAD >= 50 & EDAD <= 54 ~ 11,
+  EDAD >= 55 & EDAD <= 59 ~ 12,
+  EDAD >= 60 & EDAD <= 64 ~ 13,
+  EDAD >= 65 & EDAD <= 69 ~ 14,
+  EDAD >= 70 & EDAD <= 74 ~ 15,
+  EDAD >= 75 & EDAD <= 79 ~ 16,
+  EDAD >= 80  ~ 17
+))
+
+### CREAR LA VARIABLE YEAR Y MES
+library(tidyverse)
+
+year <- ""
+mes <- ""
+contador <- 1   
+for(i in bd_3$FECDIAG){
+  year[[contador]] <- as.integer(str_sub(i, 1, 4))
+  mes[[contador]] <- as.integer(str_sub(i,5,6))
+  contador <- contador +  1
+}  
+
+bd_3$YEAR_DIAG <- as.integer(year)
+bd_3$MES_DIAG <- as.integer(mes)
+```
+
+```{r, group_by_TIA_Tocopilla, echo=F, include=F}
+
+by_age_year <- bd_3 %>% group_by(YEAR_DIAG, AGE_GROUP) %>% count()
+
+```
+
+```{r, poblaciones_Tocopilla, echo=F, include=F}
+### AGREGAR POBLACION ESTANDAR
+by_age_year = by_age_year %>% mutate(POB_STANDAR = case_when(
+  AGE_GROUP == 1 ~ 12000,
+  AGE_GROUP == 2 ~ 10000,
+  AGE_GROUP == 3 ~ 9000,
+  AGE_GROUP == 4 ~ 9000,
+  AGE_GROUP == 5 ~ 8000,
+  AGE_GROUP == 6 ~ 8000,
+  AGE_GROUP == 7 ~ 6000,
+  AGE_GROUP == 8 ~ 6000,
+  AGE_GROUP == 9 ~ 6000,
+  AGE_GROUP == 10 ~ 6000,
+  AGE_GROUP == 11 ~ 5000,
+  AGE_GROUP == 12 ~ 4000,
+  AGE_GROUP == 13 ~ 4000,
+  AGE_GROUP == 14 ~ 3000,
+  AGE_GROUP == 15 ~ 2000,
+  AGE_GROUP == 16 ~ 1000,
+  AGE_GROUP == 17 ~ 1000
+))
+
+### CARGAR POBLACION INE
+library(readxl)
+if (Sys.info()[['sysname']] == "Darwin"){
+  #poblacion_ine <- read_delim("/Users/alvaro/Documents/Data_Science/R/proyecto_grado/cr5_18052022.txt", 
+    #delim = "\t", escape_double = FALSE, 
+    #trim_ws = TRUE)
+} else {
+   poblacion_ine <- read_excel("D:/Datasets/poblacion/pob_ine_censo2017_proyecciones.xlsx")
+}
+
+
+### AGE GROUP EN LA POBLACION INE
+poblacion_ine <- poblacion_ine %>% mutate(AGE_GROUP = case_when(
+  Edad >= 0 & Edad <= 4 ~ 1,
+  Edad >= 5 & Edad <= 9 ~ 2,
+  Edad >= 10 & Edad <= 14 ~ 3,
+  Edad >= 15 & Edad <= 19 ~ 4,
+  Edad >= 20 & Edad <= 24 ~ 5,
+  Edad >= 25 & Edad <= 29 ~ 6,
+  Edad >= 30 & Edad <= 34 ~ 7,
+  Edad >= 35 & Edad <= 39 ~ 8,
+  Edad >= 40 & Edad <= 44 ~ 9,
+  Edad >= 45 & Edad <= 49 ~ 10,
+  Edad >= 50 & Edad <= 54 ~ 11,
+  Edad >= 55 & Edad <= 59 ~ 12,
+  Edad >= 60 & Edad <= 64 ~ 13,
+  Edad >= 65 & Edad <= 69 ~ 14,
+  Edad >= 70 & Edad <= 74 ~ 15,
+  Edad >= 75 & Edad <= 79 ~ 16,
+  Edad >= 80  ~ 17
+))
+
+
+### SUBSET POBLACION ANTOFAGASTA
+poblacion_antofagasta <- as.data.frame(subset(poblacion_ine, Comuna == 2301))
+
+### GROUPBY INE ANTOFAGASTA
+poblacion_antofagasta_edad <- as.data.frame(poblacion_antofagasta) %>% group_by(AGE_GROUP) %>% 
+  #(`Poblacion 2003`)
+  summarise(pob_2003 = sum(`Poblacion 2003`),
+            pob_2004 = sum(`Poblacion 2004`),
+            pob_2005 = sum(`Poblacion 2005`),
+            pob_2006 = sum(`Poblacion 2006`),
+            pob_2007 = sum(`Poblacion 2007`),
+            pob_2008 = sum(`Poblacion 2008`),
+            pob_2009 = sum(`Poblacion 2009`),
+            pob_2010 = sum(`Poblacion 2010`),
+            pob_2011 = sum(`Poblacion 2011`),
+            pob_2012 = sum(`Poblacion 2012`),
+            pob_2013 = sum(`Poblacion 2013`),
+            pob_2014 = sum(`Poblacion 2014`),
+            pob_2015 = sum(`Poblacion 2015`),
+            )
+
+```
+
+```{r, trasponer_data_poblacion_Tocopilla, echo=F, include=F}
+### CREAR UN NUEVO DATAFRAME CON LA POBLACION POR ANO Y GRUPO DE EDAD
+posicion = 2
+year = 2003
+data_poblacion = data.frame()
+for (i in colnames(poblacion_antofagasta_edad[2:14])) {
+  dataframe <- poblacion_antofagasta_edad[posicion]
+  dataframe$YEAR_DIAG <- year
+  dataframe$AGE_GROUP <- poblacion_antofagasta_edad$AGE_GROUP
+  dataframe = rename(dataframe, 'POB' = i)
+  posicion = posicion + 1
+  year = year + 1
+  data_poblacion <- rbind(data_poblacion, dataframe)
+}   
+```
+
+```{r, merge_data_poblacion_con_data_by_mes_year_Tocopilla, include=F, echo=F}
+data_poblacion_tasa <- merge(by_age_year, data_poblacion, by = c('AGE_GROUP', 'YEAR_DIAG'))
+data_poblacion_tasa <- data_poblacion_tasa %>% arrange(YEAR_DIAG, AGE_GROUP)
+```
+
+```{r,calculo_tasa_incidencia_ajsutada_edad_Tocopilla, echo=F}
+
+data_poblacion_tasa$EXPECTED_CASES <- data_poblacion_tasa$n * data_poblacion_tasa$POB_STANDAR / data_poblacion_tasa$POB
+data_poblacion_tasa_ajustada <- data_poblacion_tasa %>% group_by(YEAR_DIAG) %>% summarise('TASA_AJUSTADA' = sum(EXPECTED_CASES)) 
+data_poblacion_tasa_ajustada_tocopilla <- data_poblacion_tasa_ajustada
+data_poblacion_tasa_ajustada_tocopilla
+```
+
+### Gráfico de la tasa de incidencia de cáncer de Piel (No melanoma), ajustada por edad en Comuna de Tocopilla
+```{r, plot_tasa_ajustada_Tocopilla, echo=F}
+plot(data_poblacion_tasa_ajustada_tocopilla,
+     ylim=c(0,100),
+     ylab="Tasa incidencia ajustada por 100 mil",
+     xlab="Años", 
+     main="Tasas de incidencia por cáncer de Piel, comuna de Tocopilla",
+     col="black", 
+     type="b")
+```
+
+# Plot tasas de incidencia por cáncer de Piel (No melanoma)
+```{r, plot_tasas_ajustadas, echo=F}
+plot(data_poblacion_tasa_ajustada_rafta ,
+     ylim=c(0,100),
+     ylab="Tasa incidencia ajustada por 100 mil",
+     xlab="Años", 
+     main="Tasas de incidencia por cáncer de Piel",
+     col="black", 
+     type="b",
+     pch=16)
+lines(data_poblacion_tasa_ajustada_cafta$YEAR_DIAG, 
+      data_poblacion_tasa_ajustada_cafta$TASA_AJUSTADA, 
+      type = "b", col="red", pch=15)
+lines(data_poblacion_tasa_ajustada_calama$YEAR_DIAG, 
+      data_poblacion_tasa_ajustada_calama$TASA_AJUSTADA, 
+      type = "b", col="blue", pch=10)
+lines(data_poblacion_tasa_ajustada_tocopilla$YEAR_DIAG, 
+      data_poblacion_tasa_ajustada_tocopilla$TASA_AJUSTADA, 
+      type = "b", col="green", pch=13)
+
+legend("topleft",
+       legend = c("R. Afta", "C. Afta", "C. Calama", "C. Tocopilla"),
+       col = c("black", "red", "blue", "green"),
+       pch = c(16,15,10,13)
+       )
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

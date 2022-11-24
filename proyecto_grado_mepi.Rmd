@@ -1,13 +1,13 @@
 ---
-title: "Serie de tiempo, cancer de pulmon, piel y vejiga en Antofagasta"
+title: "Serie de tiempo cáncer de pulmón en Antofagasta"
 output:
-  pdf_document: default
   html_document:
     df_print: paged
     pdf_document: default
     css:
     - "style-1.css"
     - "style-2.css"
+  pdf_document: default
 ---
 
 ```{r, carga de archivos, echo=FALSE, include=FALSE}
@@ -140,27 +140,11 @@ library(dplyr)
 
 ## Nuevos Dataframes; por tipo de tumor, comuna y comportamiento:
 
-## PIEL
-bd_piel <- bd %>% 
-  filter(TOP==440 | TOP==441 | TOP==442 | TOP==443 | TOP==444 | TOP==445 | 
-           TOP==446 | TOP==447 | TOP==448 | TOP==449) %>%
-  #filter(REGCOM=="02101" | REGCOM=="02201" | REGCOM=="02301" & COMP==3) %>%
-  select(TUMOURID, NOCASO, FECNAC, EDAD, SEXO, REGCOM, FECDIAG,
-         TOP, MORF, COMP, GRA, EXT, LAT, BASE, C10, PMSEC, PMTOT, FUE1, RUT)
-
-## VEJIGA
-bd_vejiga <- bd %>% 
-  filter(TOP==670 | TOP==671 | TOP==672 | TOP==673 | TOP==674 | TOP==675 | 
-           TOP==676 | TOP==677 | TOP==678 | TOP==679) %>%
-  #filter(REGCOM=="02101" | REGCOM=="02201" | REGCOM=="02301" & COMP==3) %>%
-  select(TUMOURID, NOCASO, FECNAC, EDAD, SEXO, REGCOM, FECDIAG,
-         TOP, MORF, COMP, GRA, EXT, LAT, BASE, C10, PMSEC, PMTOT, FUE1, RUT)
-
 ## PULMON
 bd_pulmon <- bd %>% 
-  filter(TOP==340 | TOP==341 | TOP==342 | TOP==343 | TOP==344 | TOP==345 | 
-           TOP==346 | TOP==347 | TOP==348 | TOP==349) %>% 
-  
+  filter(C10=="C340" | C10=="C341" | C10=="C342" | C10=="C343" | C10=="C348" | C10=="C349") %>% 
+  #filter(TOP==340 | TOP==341 | TOP==342 | TOP==343 | TOP==344 | TOP==345 | 
+           #TOP==346 | TOP==347 | TOP==348 | TOP==349) %>% 
   #filter(REGCOM=="02101" | REGCOM=="02201" | REGCOM=="02301" & COMP==3) %>%
   select(TUMOURID, NOCASO, FECNAC, EDAD, SEXO, REGCOM, FECDIAG,
          TOP, MORF, COMP, GRA, EXT, LAT, BASE, C10, PMSEC, PMTOT, FUE1, RUT)
@@ -234,7 +218,7 @@ addmargins(tabla_region)
 round(prop.table(tabla_region),2)*100
 ```
 
-### Casos en Antofagasta, Calama y Tocopilla}
+### Casos en Antofagasta, Calama y Tocopilla
 
 ```{r, casos_comunas, echo=F}
 table(factor(bd_pulmon$REGCOM, 
@@ -325,7 +309,7 @@ round(prop.table(table(factor(bd_pulmon$BASE, levels = c(0,1,2,
 ```{r, echo=F, include=F}
 ## PRIMARIO MÚLTIPLES
 ### HAY 134 NA, TRATAR DE ARREGLAR EN LA BASE DE CR5
-addmargins(table(bd_pulmon$PMTOT))
+#addmargins(table(bd_pulmon$PMTOT))
 ```
 
 
@@ -356,7 +340,10 @@ bd_pulmon %>% summarise(
 
 ### Histrograma edad
 ```{r, histograma_edad, echo=F}
-hist(bd_pulmon$EDAD)
+hist(bd_pulmon$EDAD,
+     xlab="Edad",
+     ylab="Frecuencia",
+     main="Histograma Edad")
 ```
 
 ### Gráfico de densidad edad
@@ -874,6 +861,7 @@ data_poblacion_tasa <- data_poblacion_tasa %>% arrange(YEAR_DIAG, AGE_GROUP)
 data_poblacion_tasa$EXPECTED_CASES <- data_poblacion_tasa$n * data_poblacion_tasa$POB_STANDAR / data_poblacion_tasa$POB
 data_poblacion_tasa_ajustada <- data_poblacion_tasa %>% group_by(YEAR_DIAG) %>% summarise('TASA_AJUSTADA' = sum(EXPECTED_CASES)) 
 data_poblacion_tasa_ajustada_rafta <- data_poblacion_tasa_ajustada
+data_poblacion_tasa_ajustada_rafta
 ```
 
 ### Gráfico de la tasa de incidencia de cáncer de pulmón, ajustada por edad en la región de Antofagasta.
@@ -958,7 +946,7 @@ table(factor(bd_pulmon$EXT, levels = c(1,2,3,9), labels = c(
 ### Proporción de casos según extensión tumoral, Comuna de Antofagasta
 
 ```{r, ppcion_extension_afta, echo=F}
-round(prop.table(table(factor(bd_pulmon$EXT, levels = c(1,2,3,9),
+round(prop.table(table(factor(bd_pulmon_1$EXT, levels = c(1,2,3,9),
                               labels=c(                                "Localizado","Regional","Metástasis","Desconocido"  
                               )
                               )))*100,2)
@@ -1018,7 +1006,10 @@ bd_pulmon_1 %>% summarise(
 
 ### Histrograma edad, Comuna de Antofagasta
 ```{r, histograma_edad_afta, echo=F}
-hist(bd_pulmon_1$EDAD)
+hist(bd_pulmon_1$EDAD,
+     xlab="Edad",
+     ylab="Frecuencia",
+     main="Histograma Edad")
 ```
 
 ### Gráfico de densidad edad, Comuna de Antofagasta
@@ -1412,6 +1403,7 @@ data_poblacion_tasa <- data_poblacion_tasa %>% arrange(YEAR_DIAG, AGE_GROUP)
 data_poblacion_tasa$EXPECTED_CASES <- data_poblacion_tasa$n * data_poblacion_tasa$POB_STANDAR / data_poblacion_tasa$POB
 data_poblacion_tasa_ajustada <- data_poblacion_tasa %>% group_by(YEAR_DIAG) %>% summarise('TASA_AJUSTADA' = sum(EXPECTED_CASES)) 
 data_poblacion_tasa_ajustada_cafta <- data_poblacion_tasa_ajustada
+data_poblacion_tasa_ajustada_cafta
 ```
 
 ### Gráfico de la tasa de incidencia de cáncer de pulmón, ajustada por edad en Comuna de Antofagasta
@@ -1565,7 +1557,10 @@ bd_pulmon_2 %>% summarise(
 
 ### Histrograma edad, Comuna de Calama
 ```{r, histograma_edad_Calama, echo=F}
-hist(bd_pulmon_2$EDAD)
+hist(bd_pulmon_2$EDAD,
+     xlab="Edad",
+     ylab="Frecuencia",
+     main="Histograma Edad")
 ```
 
 ### Gráfico de densidad edad, Comuna de Calama
@@ -1957,6 +1952,7 @@ data_poblacion_tasa <- data_poblacion_tasa %>% arrange(YEAR_DIAG, AGE_GROUP)
 data_poblacion_tasa$EXPECTED_CASES <- data_poblacion_tasa$n * data_poblacion_tasa$POB_STANDAR / data_poblacion_tasa$POB
 data_poblacion_tasa_ajustada <- data_poblacion_tasa %>% group_by(YEAR_DIAG) %>% summarise('TASA_AJUSTADA' = sum(EXPECTED_CASES)) 
 data_poblacion_tasa_ajustada_calama <- data_poblacion_tasa_ajustada
+data_poblacion_tasa_ajustada_calama
 ```
 
 ### Gráfico de la tasa de incidencia de cáncer de pulmón, ajustada por edad en Comuna de Calama
@@ -2110,7 +2106,10 @@ bd_pulmon_3 %>% summarise(
 
 ### Histrograma edad, Comuna de Tocopilla
 ```{r, histograma_edad_Tocopilla, echo=F}
-hist(bd_pulmon_3$EDAD)
+hist(bd_pulmon_3$EDAD,
+     xlab="Edad",
+     ylab="Frecuencia",
+     main="Histograma Edad")
 ```
 
 ### Gráfico de densidad edad, Comuna de Tocopilla
@@ -2502,6 +2501,7 @@ data_poblacion_tasa <- data_poblacion_tasa %>% arrange(YEAR_DIAG, AGE_GROUP)
 data_poblacion_tasa$EXPECTED_CASES <- data_poblacion_tasa$n * data_poblacion_tasa$POB_STANDAR / data_poblacion_tasa$POB
 data_poblacion_tasa_ajustada <- data_poblacion_tasa %>% group_by(YEAR_DIAG) %>% summarise('TASA_AJUSTADA' = sum(EXPECTED_CASES)) 
 data_poblacion_tasa_ajustada_tocopilla <- data_poblacion_tasa_ajustada
+data_poblacion_tasa_ajustada_tocopilla
 ```
 
 ### Gráfico de la tasa de incidencia de cáncer de pulmón, ajustada por edad en Comuna de Tocopilla
@@ -2544,6 +2544,9 @@ legend("topright",
 
 
 
+```{r}
+
+```
 
 
 
