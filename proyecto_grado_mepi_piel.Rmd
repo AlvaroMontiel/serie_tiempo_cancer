@@ -150,13 +150,6 @@ bd_ <- bd %>%
 ```
 
 
-```{r}
-table(bd_$MORF)
-```
-
-
-
-
 
 ```{r, Ajuste a la base de datos, echo=FALSE, include=FALSE }
 ## NUEVA VARIABLE PARA LA TOPOGRAFÍA DEL PULMON:  
@@ -869,6 +862,195 @@ plot(data_poblacion_tasa_ajustada_rafta,
      type="b")
 ```
 
+## Tasa de incidencia ajustada por edad y sexo, según año. Región de Antofagasta
+
+```{r, group_by_TIA_sex, echo=F, include=F}
+age_year_hombres <- subset(bd_, SEXO == 1)
+age_year_mujeres <- subset(bd_, SEXO == 2)
+
+by_age_year_hombres <- age_year_hombres %>% group_by(YEAR_DIAG, AGE_GROUP) %>% count()
+by_age_year_mujeres <- age_year_mujeres %>% group_by(YEAR_DIAG, AGE_GROUP) %>% count()
+```
+
+```{r, poblaciones_sex, echo=F, include=F}
+### AGREGAR POBLACION ESTANDAR
+by_age_year_hombres = by_age_year_hombres %>% mutate(POB_STANDAR = case_when(
+  AGE_GROUP == 1 ~ 12000,
+  AGE_GROUP == 2 ~ 10000,
+  AGE_GROUP == 3 ~ 9000,
+  AGE_GROUP == 4 ~ 9000,
+  AGE_GROUP == 5 ~ 8000,
+  AGE_GROUP == 6 ~ 8000,
+  AGE_GROUP == 7 ~ 6000,
+  AGE_GROUP == 8 ~ 6000,
+  AGE_GROUP == 9 ~ 6000,
+  AGE_GROUP == 10 ~ 6000,
+  AGE_GROUP == 11 ~ 5000,
+  AGE_GROUP == 12 ~ 4000,
+  AGE_GROUP == 13 ~ 4000,
+  AGE_GROUP == 14 ~ 3000,
+  AGE_GROUP == 15 ~ 2000,
+  AGE_GROUP == 16 ~ 1000,
+  AGE_GROUP == 17 ~ 1000
+))
+
+by_age_year_mujeres = by_age_year_mujeres %>% mutate(POB_STANDAR = case_when(
+  AGE_GROUP == 1 ~ 12000,
+  AGE_GROUP == 2 ~ 10000,
+  AGE_GROUP == 3 ~ 9000,
+  AGE_GROUP == 4 ~ 9000,
+  AGE_GROUP == 5 ~ 8000,
+  AGE_GROUP == 6 ~ 8000,
+  AGE_GROUP == 7 ~ 6000,
+  AGE_GROUP == 8 ~ 6000,
+  AGE_GROUP == 9 ~ 6000,
+  AGE_GROUP == 10 ~ 6000,
+  AGE_GROUP == 11 ~ 5000,
+  AGE_GROUP == 12 ~ 4000,
+  AGE_GROUP == 13 ~ 4000,
+  AGE_GROUP == 14 ~ 3000,
+  AGE_GROUP == 15 ~ 2000,
+  AGE_GROUP == 16 ~ 1000,
+  AGE_GROUP == 17 ~ 1000
+))
+
+### SUBSET POBLACION POR SEXO
+poblacion_hombres <- subset(poblacion_antofagasta, Sexo = 1)
+poblacion_mujeres <- subset(poblacion_antofagasta, Sexo = 2)
+### GROUPBY INE ANTOFAGASTA
+
+poblacion_hombres_edad <- as.data.frame(poblacion_hombres) %>% group_by(AGE_GROUP) %>% 
+  #(`Poblacion 2003`)
+  summarise(pob_2003 = sum(`Poblacion 2003`),
+            pob_2004 = sum(`Poblacion 2004`),
+            pob_2005 = sum(`Poblacion 2005`),
+            pob_2006 = sum(`Poblacion 2006`),
+            pob_2007 = sum(`Poblacion 2007`),
+            pob_2008 = sum(`Poblacion 2008`),
+            pob_2009 = sum(`Poblacion 2009`),
+            pob_2010 = sum(`Poblacion 2010`),
+            pob_2011 = sum(`Poblacion 2011`),
+            pob_2012 = sum(`Poblacion 2012`),
+            pob_2013 = sum(`Poblacion 2013`),
+            pob_2014 = sum(`Poblacion 2014`),
+            pob_2015 = sum(`Poblacion 2015`),
+            )
+
+poblacion_mujeres_edad <- as.data.frame(poblacion_mujeres) %>% group_by(AGE_GROUP) %>% 
+  #(`Poblacion 2003`)
+  summarise(pob_2003 = sum(`Poblacion 2003`),
+            pob_2004 = sum(`Poblacion 2004`),
+            pob_2005 = sum(`Poblacion 2005`),
+            pob_2006 = sum(`Poblacion 2006`),
+            pob_2007 = sum(`Poblacion 2007`),
+            pob_2008 = sum(`Poblacion 2008`),
+            pob_2009 = sum(`Poblacion 2009`),
+            pob_2010 = sum(`Poblacion 2010`),
+            pob_2011 = sum(`Poblacion 2011`),
+            pob_2012 = sum(`Poblacion 2012`),
+            pob_2013 = sum(`Poblacion 2013`),
+            pob_2014 = sum(`Poblacion 2014`),
+            pob_2015 = sum(`Poblacion 2015`),
+            )
+```
+
+```{r, trasponer_data_poblacion_sex, echo=F, include=F}
+### CREAR UN NUEVO DATAFRAME CON LA POBLACION POR ANO Y GRUPO DE EDAD
+posicion = 2
+year = 2003
+data_poblacion_hombres = data.frame()
+for (i in colnames(poblacion_hombres_edad[2:14])) {
+  dataframe <- poblacion_hombres_edad[posicion]
+  dataframe$YEAR_DIAG <- year
+  dataframe$AGE_GROUP <- poblacion_hombres_edad$AGE_GROUP
+  dataframe = rename(dataframe, 'POB' = i)
+  posicion = posicion + 1
+  year = year + 1
+  data_poblacion_hombres <- rbind(data_poblacion_hombres, dataframe)
+} 
+
+posicion = 2
+year = 2003
+data_poblacion_mujeres = data.frame()
+for (i in colnames(poblacion_mujeres_edad[2:14])) {
+  dataframe <- poblacion_mujeres_edad[posicion]
+  dataframe$YEAR_DIAG <- year
+  dataframe$AGE_GROUP <- poblacion_mujeres_edad$AGE_GROUP
+  dataframe = rename(dataframe, 'POB' = i)
+  posicion = posicion + 1
+  year = year + 1
+  data_poblacion_mujeres <- rbind(data_poblacion_mujeres, dataframe)
+} 
+```
+
+```{r, merge_data_poblacion_con_data_by_mes_year_sex, include=F, echo=F}
+
+### Hombres
+data_poblacion_tasa_hombres <- merge(by_age_year_hombres, data_poblacion_hombres, 
+                                     by = c('AGE_GROUP', 'YEAR_DIAG'))
+data_poblacion_tasa_hombres <- data_poblacion_tasa_hombres %>% arrange(YEAR_DIAG, AGE_GROUP)
+
+
+### Mujeres
+data_poblacion_tasa_mujeres <- merge(by_age_year_mujeres, data_poblacion_mujeres, 
+                                     by = c('AGE_GROUP', 'YEAR_DIAG'))
+data_poblacion_tasa_mujeres <- data_poblacion_tasa_mujeres %>% arrange(YEAR_DIAG, AGE_GROUP)
+
+```
+
+```{r,calculo_tasa_incidencia_ajsutada_edad_sex, echo=F}
+### Hombres
+data_poblacion_tasa_hombres$EXPECTED_CASES <- data_poblacion_tasa_hombres$n * 
+  data_poblacion_tasa_hombres$POB_STANDAR / data_poblacion_tasa_hombres$POB
+
+data_poblacion_tasa_hombres$STD_ERROR <- data_poblacion_tasa_hombres$n *
+  (data_poblacion_tasa_hombres$POB_STANDAR / data_poblacion_tasa_hombres$POB)^2
+
+data_poblacion_tasa_hombres <- data_poblacion_tasa_hombres %>% group_by(YEAR_DIAG) %>% summarise('TASA_AJUSTADA' = sum(EXPECTED_CASES),
+          'STD_ERROR ' = sqrt(sum(STD_ERROR)))
+
+data_poblacion_tasa_ajustada_rafta_hombres <- data_poblacion_tasa_hombres
+data_poblacion_tasa_ajustada_rafta_hombres
+
+### Mujeres
+
+data_poblacion_tasa_mujeres$EXPECTED_CASES <- data_poblacion_tasa_mujeres$n * data_poblacion_tasa_mujeres$POB_STANDAR / data_poblacion_tasa_mujeres$POB
+
+data_poblacion_tasa_mujeres$STD_ERROR <- data_poblacion_tasa_mujeres$n *
+  (data_poblacion_tasa_mujeres$POB_STANDAR / data_poblacion_tasa_mujeres$POB)^2
+
+data_poblacion_tasa_mujeres <- data_poblacion_tasa_mujeres %>% group_by(YEAR_DIAG) %>% summarise('TASA_AJUSTADA' = sum(EXPECTED_CASES),
+          'STD_ERROR ' = sqrt(sum(STD_ERROR)))
+
+data_poblacion_tasa_ajustada_rafta_mujeres <- data_poblacion_tasa_mujeres
+data_poblacion_tasa_ajustada_rafta_mujeres
+
+
+
+```
+
+### Gráfico de la tasa de incidencia de cáncer de Piel, ajustada por edad y sexo en la región de Antofagasta.
+```{r, plot_tasa_ajustada_sex, echo=F}
+plot(data_poblacion_tasa_ajustada_rafta_hombres$YEAR_DIAG,
+     data_poblacion_tasa_ajustada_rafta_hombres$TASA_AJUSTADA,
+     ylim=c(0,40),
+     ylab="Tasa incidencia ajustada por 100 mil",
+     xlab="Años", 
+     main="Tasas de incidencia por cáncer de Piel, región de Antofagasta", 
+     type="b",
+     pch=16,
+     col="red")
+lines(data_poblacion_tasa_ajustada_rafta_mujeres$YEAR_DIAG,
+      data_poblacion_tasa_ajustada_rafta_mujeres$TASA_AJUSTADA,
+      type="b",
+      col="purple",
+      pch=15)
+legend("topright",
+       legend = c("Hombres", "Mujeres"),
+       col = c("red", "purple"),
+       pch = c(16,15)
+       )
+```
 
 
 ------------------------------------------------------------------------------
@@ -1400,6 +1582,199 @@ plot(data_poblacion_tasa_ajustada_cafta,
      type="b")
 ```
 
+
+
+
+## Tasa de incidencia ajustada por edad y sexo, según año. Comuna de Antofagasta
+
+```{r, group_by_TIA_sex_afta, echo=F, include=F}
+age_year_hombres <- subset(bd_, SEXO == 1 & REGCOM == "02101")
+age_year_mujeres <- subset(bd_, SEXO == 2 & REGCOM == "02101")
+
+
+by_age_year_hombres <- age_year_hombres %>% group_by(YEAR_DIAG, AGE_GROUP) %>% count()
+by_age_year_mujeres <- age_year_mujeres %>% group_by(YEAR_DIAG, AGE_GROUP) %>% count()
+```
+
+```{r, poblaciones_sex_afta, echo=F, include=F}
+### AGREGAR POBLACION ESTANDAR
+by_age_year_hombres = by_age_year_hombres %>% mutate(POB_STANDAR = case_when(
+  AGE_GROUP == 1 ~ 12000,
+  AGE_GROUP == 2 ~ 10000,
+  AGE_GROUP == 3 ~ 9000,
+  AGE_GROUP == 4 ~ 9000,
+  AGE_GROUP == 5 ~ 8000,
+  AGE_GROUP == 6 ~ 8000,
+  AGE_GROUP == 7 ~ 6000,
+  AGE_GROUP == 8 ~ 6000,
+  AGE_GROUP == 9 ~ 6000,
+  AGE_GROUP == 10 ~ 6000,
+  AGE_GROUP == 11 ~ 5000,
+  AGE_GROUP == 12 ~ 4000,
+  AGE_GROUP == 13 ~ 4000,
+  AGE_GROUP == 14 ~ 3000,
+  AGE_GROUP == 15 ~ 2000,
+  AGE_GROUP == 16 ~ 1000,
+  AGE_GROUP == 17 ~ 1000
+))
+
+by_age_year_mujeres = by_age_year_mujeres %>% mutate(POB_STANDAR = case_when(
+  AGE_GROUP == 1 ~ 12000,
+  AGE_GROUP == 2 ~ 10000,
+  AGE_GROUP == 3 ~ 9000,
+  AGE_GROUP == 4 ~ 9000,
+  AGE_GROUP == 5 ~ 8000,
+  AGE_GROUP == 6 ~ 8000,
+  AGE_GROUP == 7 ~ 6000,
+  AGE_GROUP == 8 ~ 6000,
+  AGE_GROUP == 9 ~ 6000,
+  AGE_GROUP == 10 ~ 6000,
+  AGE_GROUP == 11 ~ 5000,
+  AGE_GROUP == 12 ~ 4000,
+  AGE_GROUP == 13 ~ 4000,
+  AGE_GROUP == 14 ~ 3000,
+  AGE_GROUP == 15 ~ 2000,
+  AGE_GROUP == 16 ~ 1000,
+  AGE_GROUP == 17 ~ 1000
+))
+
+### SUBSET POBLACION POR SEXO
+poblacion_hombres <- subset(poblacion_antofagasta, Sexo = 1 & Comuna == 2101)
+poblacion_mujeres <- subset(poblacion_antofagasta, Sexo = 2  & Comuna == 2101)
+### GROUPBY INE ANTOFAGASTA
+
+poblacion_hombres_edad <- as.data.frame(poblacion_hombres) %>% group_by(AGE_GROUP) %>% 
+  #(`Poblacion 2003`)
+  summarise(pob_2003 = sum(`Poblacion 2003`),
+            pob_2004 = sum(`Poblacion 2004`),
+            pob_2005 = sum(`Poblacion 2005`),
+            pob_2006 = sum(`Poblacion 2006`),
+            pob_2007 = sum(`Poblacion 2007`),
+            pob_2008 = sum(`Poblacion 2008`),
+            pob_2009 = sum(`Poblacion 2009`),
+            pob_2010 = sum(`Poblacion 2010`),
+            pob_2011 = sum(`Poblacion 2011`),
+            pob_2012 = sum(`Poblacion 2012`),
+            pob_2013 = sum(`Poblacion 2013`),
+            pob_2014 = sum(`Poblacion 2014`),
+            pob_2015 = sum(`Poblacion 2015`),
+            )
+
+poblacion_mujeres_edad <- as.data.frame(poblacion_mujeres) %>% group_by(AGE_GROUP) %>% 
+  #(`Poblacion 2003`)
+  summarise(pob_2003 = sum(`Poblacion 2003`),
+            pob_2004 = sum(`Poblacion 2004`),
+            pob_2005 = sum(`Poblacion 2005`),
+            pob_2006 = sum(`Poblacion 2006`),
+            pob_2007 = sum(`Poblacion 2007`),
+            pob_2008 = sum(`Poblacion 2008`),
+            pob_2009 = sum(`Poblacion 2009`),
+            pob_2010 = sum(`Poblacion 2010`),
+            pob_2011 = sum(`Poblacion 2011`),
+            pob_2012 = sum(`Poblacion 2012`),
+            pob_2013 = sum(`Poblacion 2013`),
+            pob_2014 = sum(`Poblacion 2014`),
+            pob_2015 = sum(`Poblacion 2015`),
+            )
+```
+
+```{r, trasponer_data_poblacion_sex_afta, echo=F, include=F}
+### CREAR UN NUEVO DATAFRAME CON LA POBLACION POR ANO Y GRUPO DE EDAD
+posicion = 2
+year = 2003
+data_poblacion_hombres = data.frame()
+for (i in colnames(poblacion_hombres_edad[2:14])) {
+  dataframe <- poblacion_hombres_edad[posicion]
+  dataframe$YEAR_DIAG <- year
+  dataframe$AGE_GROUP <- poblacion_hombres_edad$AGE_GROUP
+  dataframe = rename(dataframe, 'POB' = i)
+  posicion = posicion + 1
+  year = year + 1
+  data_poblacion_hombres <- rbind(data_poblacion_hombres, dataframe)
+} 
+
+posicion = 2
+year = 2003
+data_poblacion_mujeres = data.frame()
+for (i in colnames(poblacion_mujeres_edad[2:14])) {
+  dataframe <- poblacion_mujeres_edad[posicion]
+  dataframe$YEAR_DIAG <- year
+  dataframe$AGE_GROUP <- poblacion_mujeres_edad$AGE_GROUP
+  dataframe = rename(dataframe, 'POB' = i)
+  posicion = posicion + 1
+  year = year + 1
+  data_poblacion_mujeres <- rbind(data_poblacion_mujeres, dataframe)
+} 
+```
+
+```{r, merge_data_poblacion_con_data_by_mes_year_sex_afta, include=F, echo=F}
+
+### Hombres
+data_poblacion_tasa_hombres <- merge(by_age_year_hombres, data_poblacion_hombres, 
+                                     by = c('AGE_GROUP', 'YEAR_DIAG'))
+data_poblacion_tasa_hombres <- data_poblacion_tasa_hombres %>% arrange(YEAR_DIAG, AGE_GROUP)
+
+
+### Mujeres
+data_poblacion_tasa_mujeres <- merge(by_age_year_mujeres, data_poblacion_mujeres, 
+                                     by = c('AGE_GROUP', 'YEAR_DIAG'))
+data_poblacion_tasa_mujeres <- data_poblacion_tasa_mujeres %>% arrange(YEAR_DIAG, AGE_GROUP)
+
+```
+
+```{r,calculo_tasa_incidencia_ajsutada_edad_sex_afta, echo=F}
+### Hombres
+data_poblacion_tasa_hombres$EXPECTED_CASES <- data_poblacion_tasa_hombres$n * 
+  data_poblacion_tasa_hombres$POB_STANDAR / data_poblacion_tasa_hombres$POB
+
+data_poblacion_tasa_hombres$STD_ERROR <- data_poblacion_tasa_hombres$n *
+  (data_poblacion_tasa_hombres$POB_STANDAR / data_poblacion_tasa_hombres$POB)^2
+
+data_poblacion_tasa_hombres <- data_poblacion_tasa_hombres %>% group_by(YEAR_DIAG) %>% summarise('TASA_AJUSTADA' = sum(EXPECTED_CASES),
+          'STD_ERROR ' = sqrt(sum(STD_ERROR)))
+ 
+data_poblacion_tasa_ajustada_cafta_hombres <- data_poblacion_tasa_hombres
+data_poblacion_tasa_ajustada_cafta_hombres
+
+### Mujeres
+
+data_poblacion_tasa_mujeres$EXPECTED_CASES <- data_poblacion_tasa_mujeres$n * data_poblacion_tasa_mujeres$POB_STANDAR / data_poblacion_tasa_mujeres$POB
+
+data_poblacion_tasa_mujeres$STD_ERROR <- data_poblacion_tasa_mujeres$n *
+  (data_poblacion_tasa_mujeres$POB_STANDAR / data_poblacion_tasa_mujeres$POB)^2
+
+data_poblacion_tasa_mujeres <- data_poblacion_tasa_mujeres %>% group_by(YEAR_DIAG) %>% summarise('TASA_AJUSTADA' = sum(EXPECTED_CASES),
+          'STD_ERROR ' = sqrt(sum(STD_ERROR)))
+
+data_poblacion_tasa_ajustada_cafta_mujeres <- data_poblacion_tasa_mujeres
+data_poblacion_tasa_ajustada_cafta_mujeres
+
+
+
+```
+
+### Gráfico de la tasa de incidencia de cáncer de Piel, ajustada por edad y sexo en la comuna de Antofagasta.
+```{r, plot_tasa_ajustada_sex_afta, echo=F}
+plot(data_poblacion_tasa_ajustada_cafta_hombres$YEAR_DIAG,
+     data_poblacion_tasa_ajustada_cafta_hombres$TASA_AJUSTADA,
+     ylim=c(0,50),
+     ylab="Tasa incidencia ajustada por 100 mil",
+     xlab="Años", 
+     main="Tasas de incidencia por cáncer de Piel, comuna de Antofagasta", 
+     type="b",
+     pch=16,
+     col="red")
+lines(data_poblacion_tasa_ajustada_cafta_mujeres$YEAR_DIAG,
+      data_poblacion_tasa_ajustada_cafta_mujeres$TASA_AJUSTADA,
+      type="b",
+      col="purple",
+      pch=15)
+legend("topright",
+       legend = c("Hombres", "Mujeres"),
+       col = c("red", "purple"),
+       pch = c(16,15)
+       )
+```
 
 
 
@@ -1941,6 +2316,198 @@ plot(data_poblacion_tasa_ajustada_calama,
      type="b")
 ```
 
+## Tasa de incidencia ajustada por edad y sexo, según año. Comuna de Calama
+
+```{r, group_by_TIA_sex_calama, echo=F, include=F}
+age_year_hombres <- subset(bd_, SEXO == 1 & REGCOM == "02201")
+age_year_mujeres <- subset(bd_, SEXO == 2 & REGCOM == "02201")
+
+
+by_age_year_hombres <- age_year_hombres %>% group_by(YEAR_DIAG, AGE_GROUP) %>% count()
+by_age_year_mujeres <- age_year_mujeres %>% group_by(YEAR_DIAG, AGE_GROUP) %>% count()
+```
+
+```{r, poblaciones_sex_calama, echo=F, include=F}
+### AGREGAR POBLACION ESTANDAR
+by_age_year_hombres = by_age_year_hombres %>% mutate(POB_STANDAR = case_when(
+  AGE_GROUP == 1 ~ 12000,
+  AGE_GROUP == 2 ~ 10000,
+  AGE_GROUP == 3 ~ 9000,
+  AGE_GROUP == 4 ~ 9000,
+  AGE_GROUP == 5 ~ 8000,
+  AGE_GROUP == 6 ~ 8000,
+  AGE_GROUP == 7 ~ 6000,
+  AGE_GROUP == 8 ~ 6000,
+  AGE_GROUP == 9 ~ 6000,
+  AGE_GROUP == 10 ~ 6000,
+  AGE_GROUP == 11 ~ 5000,
+  AGE_GROUP == 12 ~ 4000,
+  AGE_GROUP == 13 ~ 4000,
+  AGE_GROUP == 14 ~ 3000,
+  AGE_GROUP == 15 ~ 2000,
+  AGE_GROUP == 16 ~ 1000,
+  AGE_GROUP == 17 ~ 1000
+))
+
+by_age_year_mujeres = by_age_year_mujeres %>% mutate(POB_STANDAR = case_when(
+  AGE_GROUP == 1 ~ 12000,
+  AGE_GROUP == 2 ~ 10000,
+  AGE_GROUP == 3 ~ 9000,
+  AGE_GROUP == 4 ~ 9000,
+  AGE_GROUP == 5 ~ 8000,
+  AGE_GROUP == 6 ~ 8000,
+  AGE_GROUP == 7 ~ 6000,
+  AGE_GROUP == 8 ~ 6000,
+  AGE_GROUP == 9 ~ 6000,
+  AGE_GROUP == 10 ~ 6000,
+  AGE_GROUP == 11 ~ 5000,
+  AGE_GROUP == 12 ~ 4000,
+  AGE_GROUP == 13 ~ 4000,
+  AGE_GROUP == 14 ~ 3000,
+  AGE_GROUP == 15 ~ 2000,
+  AGE_GROUP == 16 ~ 1000,
+  AGE_GROUP == 17 ~ 1000
+))
+
+### SUBSET POBLACION POR SEXO
+poblacion_hombres <- subset(poblacion_antofagasta, Sexo = 1 & Comuna == 2201)
+poblacion_mujeres <- subset(poblacion_antofagasta, Sexo = 2  & Comuna == 2201)
+### GROUPBY INE ANTOFAGASTA
+
+poblacion_hombres_edad <- as.data.frame(poblacion_hombres) %>% group_by(AGE_GROUP) %>% 
+  #(`Poblacion 2003`)
+  summarise(pob_2003 = sum(`Poblacion 2003`),
+            pob_2004 = sum(`Poblacion 2004`),
+            pob_2005 = sum(`Poblacion 2005`),
+            pob_2006 = sum(`Poblacion 2006`),
+            pob_2007 = sum(`Poblacion 2007`),
+            pob_2008 = sum(`Poblacion 2008`),
+            pob_2009 = sum(`Poblacion 2009`),
+            pob_2010 = sum(`Poblacion 2010`),
+            pob_2011 = sum(`Poblacion 2011`),
+            pob_2012 = sum(`Poblacion 2012`),
+            pob_2013 = sum(`Poblacion 2013`),
+            pob_2014 = sum(`Poblacion 2014`),
+            pob_2015 = sum(`Poblacion 2015`),
+            )
+
+poblacion_mujeres_edad <- as.data.frame(poblacion_mujeres) %>% group_by(AGE_GROUP) %>% 
+  #(`Poblacion 2003`)
+  summarise(pob_2003 = sum(`Poblacion 2003`),
+            pob_2004 = sum(`Poblacion 2004`),
+            pob_2005 = sum(`Poblacion 2005`),
+            pob_2006 = sum(`Poblacion 2006`),
+            pob_2007 = sum(`Poblacion 2007`),
+            pob_2008 = sum(`Poblacion 2008`),
+            pob_2009 = sum(`Poblacion 2009`),
+            pob_2010 = sum(`Poblacion 2010`),
+            pob_2011 = sum(`Poblacion 2011`),
+            pob_2012 = sum(`Poblacion 2012`),
+            pob_2013 = sum(`Poblacion 2013`),
+            pob_2014 = sum(`Poblacion 2014`),
+            pob_2015 = sum(`Poblacion 2015`),
+            )
+```
+
+```{r, trasponer_data_poblacion_sex_calama, echo=F, include=F}
+### CREAR UN NUEVO DATAFRAME CON LA POBLACION POR ANO Y GRUPO DE EDAD
+posicion = 2
+year = 2003
+data_poblacion_hombres = data.frame()
+for (i in colnames(poblacion_hombres_edad[2:14])) {
+  dataframe <- poblacion_hombres_edad[posicion]
+  dataframe$YEAR_DIAG <- year
+  dataframe$AGE_GROUP <- poblacion_hombres_edad$AGE_GROUP
+  dataframe = rename(dataframe, 'POB' = i)
+  posicion = posicion + 1
+  year = year + 1
+  data_poblacion_hombres <- rbind(data_poblacion_hombres, dataframe)
+} 
+
+posicion = 2
+year = 2003
+data_poblacion_mujeres = data.frame()
+for (i in colnames(poblacion_mujeres_edad[2:14])) {
+  dataframe <- poblacion_mujeres_edad[posicion]
+  dataframe$YEAR_DIAG <- year
+  dataframe$AGE_GROUP <- poblacion_mujeres_edad$AGE_GROUP
+  dataframe = rename(dataframe, 'POB' = i)
+  posicion = posicion + 1
+  year = year + 1
+  data_poblacion_mujeres <- rbind(data_poblacion_mujeres, dataframe)
+} 
+```
+
+```{r, merge_data_poblacion_con_data_by_mes_year_sex_calama, include=F, echo=F}
+
+### Hombres
+data_poblacion_tasa_hombres <- merge(by_age_year_hombres, data_poblacion_hombres, 
+                                     by = c('AGE_GROUP', 'YEAR_DIAG'))
+data_poblacion_tasa_hombres <- data_poblacion_tasa_hombres %>% arrange(YEAR_DIAG, AGE_GROUP)
+
+
+### Mujeres
+data_poblacion_tasa_mujeres <- merge(by_age_year_mujeres, data_poblacion_mujeres, 
+                                     by = c('AGE_GROUP', 'YEAR_DIAG'))
+data_poblacion_tasa_mujeres <- data_poblacion_tasa_mujeres %>% arrange(YEAR_DIAG, AGE_GROUP)
+
+```
+
+```{r,calculo_tasa_incidencia_ajsutada_edad_sex_calama, echo=F}
+### Hombres
+data_poblacion_tasa_hombres$EXPECTED_CASES <- data_poblacion_tasa_hombres$n * 
+  data_poblacion_tasa_hombres$POB_STANDAR / data_poblacion_tasa_hombres$POB
+
+data_poblacion_tasa_hombres$STD_ERROR <- data_poblacion_tasa_hombres$n *
+  (data_poblacion_tasa_hombres$POB_STANDAR / data_poblacion_tasa_hombres$POB)^2
+
+data_poblacion_tasa_hombres <- data_poblacion_tasa_hombres %>% group_by(YEAR_DIAG) %>% summarise('TASA_AJUSTADA' = sum(EXPECTED_CASES),
+          'STD_ERROR ' = sqrt(sum(STD_ERROR)))
+
+data_poblacion_tasa_ajustada_calama_hombres <- data_poblacion_tasa_hombres
+data_poblacion_tasa_ajustada_calama_hombres
+
+### Mujeres
+
+data_poblacion_tasa_mujeres$EXPECTED_CASES <- data_poblacion_tasa_mujeres$n * data_poblacion_tasa_mujeres$POB_STANDAR / data_poblacion_tasa_mujeres$POB
+
+data_poblacion_tasa_mujeres$STD_ERROR <- data_poblacion_tasa_mujeres$n *
+  (data_poblacion_tasa_mujeres$POB_STANDAR / data_poblacion_tasa_mujeres$POB)^2
+
+data_poblacion_tasa_mujeres <- data_poblacion_tasa_mujeres %>% group_by(YEAR_DIAG) %>% summarise('TASA_AJUSTADA' = sum(EXPECTED_CASES),
+          'STD_ERROR ' = sqrt(sum(STD_ERROR)))
+
+data_poblacion_tasa_ajustada_calama_mujeres <- data_poblacion_tasa_mujeres
+data_poblacion_tasa_ajustada_calama_mujeres
+
+
+```
+
+### Gráfico de la tasa de incidencia de cáncer de Piel, ajustada por edad y sexo en la comuna de Calama
+```{r, plot_tasa_ajustada_sex_calama, echo=F}
+plot(data_poblacion_tasa_ajustada_calama_hombres$YEAR_DIAG,
+     data_poblacion_tasa_ajustada_calama_hombres$TASA_AJUSTADA,
+     ylim=c(0,25),
+     ylab="Tasa incidencia ajustada por 100 mil",
+     xlab="Años", 
+     main="Tasas de incidencia por cáncer de Piel, comuna de Calama", 
+     type="b",
+     pch=16,
+     col="red")
+lines(data_poblacion_tasa_ajustada_calama_mujeres$YEAR_DIAG,
+      data_poblacion_tasa_ajustada_calama_mujeres$TASA_AJUSTADA,
+      type="b",
+      col="purple",
+      pch=15)
+legend("topright",
+       legend = c("Hombres", "Mujeres"),
+       col = c("red", "purple"),
+       pch = c(16,15)
+       )
+```
+
+
+
 
 
 
@@ -2481,6 +3048,200 @@ plot(data_poblacion_tasa_ajustada_tocopilla,
      type="b")
 ```
 
+## Tasa de incidencia ajustada por edad y sexo, según año. Comuna de Tocopilla
+
+```{r, group_by_TIA_sex_toco, echo=F, include=F}
+age_year_hombres <- subset(bd_, SEXO == 1 & REGCOM == "02301")
+age_year_mujeres <- subset(bd_, SEXO == 2 & REGCOM == "02301")
+
+
+by_age_year_hombres <- age_year_hombres %>% group_by(YEAR_DIAG, AGE_GROUP) %>% count()
+by_age_year_mujeres <- age_year_mujeres %>% group_by(YEAR_DIAG, AGE_GROUP) %>% count()
+```
+
+```{r, poblaciones_sex_toco, echo=F, include=F}
+### AGREGAR POBLACION ESTANDAR
+by_age_year_hombres = by_age_year_hombres %>% mutate(POB_STANDAR = case_when(
+  AGE_GROUP == 1 ~ 12000,
+  AGE_GROUP == 2 ~ 10000,
+  AGE_GROUP == 3 ~ 9000,
+  AGE_GROUP == 4 ~ 9000,
+  AGE_GROUP == 5 ~ 8000,
+  AGE_GROUP == 6 ~ 8000,
+  AGE_GROUP == 7 ~ 6000,
+  AGE_GROUP == 8 ~ 6000,
+  AGE_GROUP == 9 ~ 6000,
+  AGE_GROUP == 10 ~ 6000,
+  AGE_GROUP == 11 ~ 5000,
+  AGE_GROUP == 12 ~ 4000,
+  AGE_GROUP == 13 ~ 4000,
+  AGE_GROUP == 14 ~ 3000,
+  AGE_GROUP == 15 ~ 2000,
+  AGE_GROUP == 16 ~ 1000,
+  AGE_GROUP == 17 ~ 1000
+))
+
+by_age_year_mujeres = by_age_year_mujeres %>% mutate(POB_STANDAR = case_when(
+  AGE_GROUP == 1 ~ 12000,
+  AGE_GROUP == 2 ~ 10000,
+  AGE_GROUP == 3 ~ 9000,
+  AGE_GROUP == 4 ~ 9000,
+  AGE_GROUP == 5 ~ 8000,
+  AGE_GROUP == 6 ~ 8000,
+  AGE_GROUP == 7 ~ 6000,
+  AGE_GROUP == 8 ~ 6000,
+  AGE_GROUP == 9 ~ 6000,
+  AGE_GROUP == 10 ~ 6000,
+  AGE_GROUP == 11 ~ 5000,
+  AGE_GROUP == 12 ~ 4000,
+  AGE_GROUP == 13 ~ 4000,
+  AGE_GROUP == 14 ~ 3000,
+  AGE_GROUP == 15 ~ 2000,
+  AGE_GROUP == 16 ~ 1000,
+  AGE_GROUP == 17 ~ 1000
+))
+
+### SUBSET POBLACION POR SEXO
+poblacion_hombres <- subset(poblacion_antofagasta, Sexo = 1 & Comuna == 2301)
+poblacion_mujeres <- subset(poblacion_antofagasta, Sexo = 2  & Comuna == 2301)
+### GROUPBY INE ANTOFAGASTA
+
+poblacion_hombres_edad <- as.data.frame(poblacion_hombres) %>% group_by(AGE_GROUP) %>% 
+  #(`Poblacion 2003`)
+  summarise(pob_2003 = sum(`Poblacion 2003`),
+            pob_2004 = sum(`Poblacion 2004`),
+            pob_2005 = sum(`Poblacion 2005`),
+            pob_2006 = sum(`Poblacion 2006`),
+            pob_2007 = sum(`Poblacion 2007`),
+            pob_2008 = sum(`Poblacion 2008`),
+            pob_2009 = sum(`Poblacion 2009`),
+            pob_2010 = sum(`Poblacion 2010`),
+            pob_2011 = sum(`Poblacion 2011`),
+            pob_2012 = sum(`Poblacion 2012`),
+            pob_2013 = sum(`Poblacion 2013`),
+            pob_2014 = sum(`Poblacion 2014`),
+            pob_2015 = sum(`Poblacion 2015`),
+            )
+
+poblacion_mujeres_edad <- as.data.frame(poblacion_mujeres) %>% group_by(AGE_GROUP) %>% 
+  #(`Poblacion 2003`)
+  summarise(pob_2003 = sum(`Poblacion 2003`),
+            pob_2004 = sum(`Poblacion 2004`),
+            pob_2005 = sum(`Poblacion 2005`),
+            pob_2006 = sum(`Poblacion 2006`),
+            pob_2007 = sum(`Poblacion 2007`),
+            pob_2008 = sum(`Poblacion 2008`),
+            pob_2009 = sum(`Poblacion 2009`),
+            pob_2010 = sum(`Poblacion 2010`),
+            pob_2011 = sum(`Poblacion 2011`),
+            pob_2012 = sum(`Poblacion 2012`),
+            pob_2013 = sum(`Poblacion 2013`),
+            pob_2014 = sum(`Poblacion 2014`),
+            pob_2015 = sum(`Poblacion 2015`),
+            )
+```
+
+```{r, trasponer_data_poblacion_sex_toco, echo=F, include=F}
+### CREAR UN NUEVO DATAFRAME CON LA POBLACION POR ANO Y GRUPO DE EDAD
+posicion = 2
+year = 2003
+data_poblacion_hombres = data.frame()
+for (i in colnames(poblacion_hombres_edad[2:14])) {
+  dataframe <- poblacion_hombres_edad[posicion]
+  dataframe$YEAR_DIAG <- year
+  dataframe$AGE_GROUP <- poblacion_hombres_edad$AGE_GROUP
+  dataframe = rename(dataframe, 'POB' = i)
+  posicion = posicion + 1
+  year = year + 1
+  data_poblacion_hombres <- rbind(data_poblacion_hombres, dataframe)
+} 
+
+posicion = 2
+year = 2003
+data_poblacion_mujeres = data.frame()
+for (i in colnames(poblacion_mujeres_edad[2:14])) {
+  dataframe <- poblacion_mujeres_edad[posicion]
+  dataframe$YEAR_DIAG <- year
+  dataframe$AGE_GROUP <- poblacion_mujeres_edad$AGE_GROUP
+  dataframe = rename(dataframe, 'POB' = i)
+  posicion = posicion + 1
+  year = year + 1
+  data_poblacion_mujeres <- rbind(data_poblacion_mujeres, dataframe)
+} 
+```
+
+```{r, merge_data_poblacion_con_data_by_mes_year_sex_toco, include=F, echo=F}
+
+### Hombres
+data_poblacion_tasa_hombres <- merge(by_age_year_hombres, data_poblacion_hombres, 
+                                     by = c('AGE_GROUP', 'YEAR_DIAG'))
+data_poblacion_tasa_hombres <- data_poblacion_tasa_hombres %>% arrange(YEAR_DIAG, AGE_GROUP)
+
+
+### Mujeres
+data_poblacion_tasa_mujeres <- merge(by_age_year_mujeres, data_poblacion_mujeres, 
+                                     by = c('AGE_GROUP', 'YEAR_DIAG'))
+data_poblacion_tasa_mujeres <- data_poblacion_tasa_mujeres %>% arrange(YEAR_DIAG, AGE_GROUP)
+
+```
+
+```{r,calculo_tasa_incidencia_ajsutada_edad_sex_toco, echo=F}
+### Hombres
+data_poblacion_tasa_hombres$EXPECTED_CASES <- data_poblacion_tasa_hombres$n * 
+  data_poblacion_tasa_hombres$POB_STANDAR / data_poblacion_tasa_hombres$POB
+
+data_poblacion_tasa_hombres$STD_ERROR <- data_poblacion_tasa_hombres$n *
+  (data_poblacion_tasa_hombres$POB_STANDAR / data_poblacion_tasa_hombres$POB)^2
+
+data_poblacion_tasa_hombres <- data_poblacion_tasa_hombres %>% group_by(YEAR_DIAG) %>% summarise('TASA_AJUSTADA' = sum(EXPECTED_CASES),
+          'STD_ERROR ' = sqrt(sum(STD_ERROR)))
+
+data_poblacion_tasa_ajustada_tocopilla_hombres <- data_poblacion_tasa_hombres
+data_poblacion_tasa_ajustada_tocopilla_hombres
+
+### Mujeres
+
+data_poblacion_tasa_mujeres$EXPECTED_CASES <- data_poblacion_tasa_mujeres$n * data_poblacion_tasa_mujeres$POB_STANDAR / data_poblacion_tasa_mujeres$POB
+
+data_poblacion_tasa_mujeres$STD_ERROR <- data_poblacion_tasa_mujeres$n *
+  (data_poblacion_tasa_mujeres$POB_STANDAR / data_poblacion_tasa_mujeres$POB)^2
+
+data_poblacion_tasa_mujeres <- data_poblacion_tasa_mujeres %>% group_by(YEAR_DIAG) %>% summarise('TASA_AJUSTADA' = sum(EXPECTED_CASES),
+          'STD_ERROR ' = sqrt(sum(STD_ERROR)))
+
+data_poblacion_tasa_ajustada_tocopilla_mujeres <- data_poblacion_tasa_mujeres
+data_poblacion_tasa_ajustada_tocopilla_mujeres
+
+```
+
+### Gráfico de la tasa de incidencia de cáncer de Piel, ajustada por edad y sexo en la comuna de Tocopilla
+```{r, plot_tasa_ajustada_sex_toco, echo=F}
+plot(data_poblacion_tasa_ajustada_tocopilla_hombres$YEAR_DIAG,
+     data_poblacion_tasa_ajustada_tocopilla_hombres$TASA_AJUSTADA,
+     ylim=c(0,80),
+     ylab="Tasa incidencia ajustada por 100 mil",
+     xlab="Años", 
+     main="Tasas de incidencia por cáncer de Piel, comuna de Tocopilla", 
+     type="b",
+     pch=16,
+     col="red")
+lines(data_poblacion_tasa_ajustada_tocopilla_mujeres$YEAR_DIAG,
+      data_poblacion_tasa_ajustada_tocopilla_mujeres$TASA_AJUSTADA,
+      type="b",
+      col="purple",
+      pch=15)
+legend("topright",
+       legend = c("Hombres", "Mujeres"),
+       col = c("red", "purple"),
+       pch = c(16,15)
+       )
+```
+
+
+
+
+
+
 # Plot tasas de incidencia por cáncer de Piel (No melanoma)
 ```{r, plot_tasas_ajustadas, echo=F}
 plot(data_poblacion_tasa_ajustada_rafta ,
@@ -2509,6 +3270,9 @@ legend("topleft",
 ```
 
 
+```{r}
+
+```
 
 
 
