@@ -1,9 +1,11 @@
 ################# Librerías
+cancer <- readline(prompt="Ingresar Cáncer a analizar: ")
+
 library(readr)
 library(dplyr)
 library(tidyverse)
 library(readxl)
-library(xlsx)
+#library(xlsx)
 
 ################################################################################
 ################################ Carga de datos ################################
@@ -131,8 +133,6 @@ data_joinpoint <- function(datos_incidencia, periodo, poblacion){
 ##############################################################################
 ########################## Selección tipo de cancer ##########################
 ##############################################################################
-cancer <- readline(prompt="Ingresar Cáncer a analizar: ")
-
 if (cancer == "vejiga"){
   bd_ <- bd %>% 
     filter(C10=="C670" | C10=="C671" | C10=="C672" | C10=="C674" | C10=="C675" | 
@@ -309,15 +309,35 @@ joinpoint_com_tocopilla <- data_joinpoint(datos_incidencia = bd_comtocopilla,
 ##############################################################################
 ################################ DATOS A CSV ###############################
 ##############################################################################
+
+if(cancer == "pulmon") {
 write_csv(joinpoint_reg_afta, 
-          file = "/Users/alvaro/Documents/Data_Science/R/proyecto_grado/jointpoint/jp_reg_afta.csv")
+          file = "/Users/alvaro/Documents/Data_Science/R/proyecto_grado/jointpoint/jp_reg_afta_pulmon.csv")
 write_csv(joinpoint_com_afta, 
-          file = "/Users/alvaro/Documents/Data_Science/R/proyecto_grado/jointpoint/jp_com_afta.csv")
+          file = "/Users/alvaro/Documents/Data_Science/R/proyecto_grado/jointpoint/jp_com_afta_pulmon.csv")
 write_csv(joinpoint_com_calama, 
-          file = "/Users/alvaro/Documents/Data_Science/R/proyecto_grado/jointpoint/jp_com_calama.csv")
+          file = "/Users/alvaro/Documents/Data_Science/R/proyecto_grado/jointpoint/jp_com_calama_pulmon.csv")
 write_csv(joinpoint_com_tocopilla, 
-          file = "/Users/alvaro/Documents/Data_Science/R/proyecto_grado/jointpoint/jp_com_tocopilla.csv")
+          file = "/Users/alvaro/Documents/Data_Science/R/proyecto_grado/jointpoint/jp_com_tocopilla_pulmon.csv")
 
-
+} else if (cancer == "piel") {
+  write_csv(joinpoint_reg_afta, 
+            file = "/Users/alvaro/Documents/Data_Science/R/proyecto_grado/jointpoint/jp_reg_afta_piel.csv")
+  write_csv(joinpoint_com_afta, 
+            file = "/Users/alvaro/Documents/Data_Science/R/proyecto_grado/jointpoint/jp_com_afta_piel.csv")
+  write_csv(joinpoint_com_calama, 
+            file = "/Users/alvaro/Documents/Data_Science/R/proyecto_grado/jointpoint/jp_com_calama_piel.csv")
+  write_csv(joinpoint_com_tocopilla, 
+            file = "/Users/alvaro/Documents/Data_Science/R/proyecto_grado/jointpoint/jp_com_tocopilla_piel.csv")
+} else if (cancer == "vejiga") {
+  write_csv(joinpoint_reg_afta, 
+            file = "/Users/alvaro/Documents/Data_Science/R/proyecto_grado/jointpoint/jp_reg_afta_vejiga.csv")
+  write_csv(joinpoint_com_afta, 
+            file = "/Users/alvaro/Documents/Data_Science/R/proyecto_grado/jointpoint/jp_com_afta_vejiga.csv")
+  write_csv(joinpoint_com_calama, 
+            file = "/Users/alvaro/Documents/Data_Science/R/proyecto_grado/jointpoint/jp_com_calama_vejiga.csv")
+  write_csv(joinpoint_com_tocopilla, 
+            file = "/Users/alvaro/Documents/Data_Science/R/proyecto_grado/jointpoint/jp_com_tocopilla_vejiga.csv")
+}
 
 
