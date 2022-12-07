@@ -3,8 +3,12 @@ library(readr)
 library(dplyr)
 library(tidyverse)
 library(readxl)
+library(xlsx)
 
-################ Carga de datos
+################################################################################
+################################ Carga de datos ################################
+################################################################################
+####                      Cargar datos de Incidencia
 if (Sys.info()[['sysname']] == "Darwin"){
   bd <- read_delim("/Users/alvaro/Documents/Data_Science/R/proyecto_grado/cr5_18052022.txt", 
                    delim = "\t", escape_double = FALSE, 
@@ -15,8 +19,118 @@ if (Sys.info()[['sysname']] == "Darwin"){
                    trim_ws = TRUE) 
 }
 
+####                     Cargar datos de Poblacion INE
+if (Sys.info()[['sysname']] == "Darwin"){
+  poblacion_ine <- read_excel("/Users/alvaro/Desktop/estimaciones-y-proyecciones-2002-2035-comunas.xlsx")
+} else {
+  poblacion_ine <- read_excel("D:/Datasets/poblacion/pob_ine_censo2017_proyecciones.xlsx")
+}
 
-############# Selección tipo de cancer
+####                    Cargar datos de Poblacion Estandar
+pob_estandar = data.frame(AGE_GROUP = c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17),
+                          POB_STANDAR = c(12000,10000,9000,9000,
+                                          8000,8000,6000,6000,
+                                          6000,6000,5000,4000,
+                                          4000,3000,2000,1000,
+                                          1000))
+
+################################################################################
+############################# Define funciones #################################
+################################################################################
+
+###### completar grupos de edad
+completa_grupo_edad <- function(periodo, datos_edad_grupo){
+  vector_tiempo <- periodo
+  resta <- vector_tiempo[2] - vector_tiempo[1]
+  final = vector_tiempo[1] + resta
+  vector = 2003:final
+  data_agrupada = data.frame()
+  for (i in vector) {
+    vector_longitud = rep(i, 17)
+    if (nrow(subset(datos_edad_grupo, datos_edad_grupo$YEAR_DIAG == i)) < 17)
+    {
+      grupo_edad = c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17)
+      data_frame = subset(datos_edad_grupo, datos_edad_grupo$YEAR_DIAG == i) }
+    faltantes_ = grupo_edad[!grupo_edad %in% data_frame$AGE_GROUP]
+    data = data.frame(YEAR_DIAG = i, 
+                      AGE_GROUP =  faltantes_,
+                      n = 0) 
+    data_frame <- rbind(data, data_frame)
+    data_agrupada <- rbind(data_frame, data_agrupada)
+  }
+  return (data_agrupada)
+}
+
+### agrupar poblacion por grupo de edad y por año
+datos_poblacion <- function(poblacion){
+  poblacion_edad <- as.data.frame(poblacion) %>% group_by(AGE_GROUP) %>% 
+    summarise(pob_2003 = sum(`Poblacion 2003`),
+              pob_2004 = sum(`Poblacion 2004`),
+              pob_2005 = sum(`Poblacion 2005`),
+              pob_2006 = sum(`Poblacion 2006`),
+              pob_2007 = sum(`Poblacion 2007`),
+              pob_2008 = sum(`Poblacion 2008`),
+              pob_2009 = sum(`Poblacion 2009`),
+              pob_2010 = sum(`Poblacion 2010`),
+              pob_2011 = sum(`Poblacion 2011`),
+              pob_2012 = sum(`Poblacion 2012`),
+              pob_2013 = sum(`Poblacion 2013`),
+              pob_2014 = sum(`Poblacion 2014`),
+              pob_2015 = sum(`Poblacion 2015`)
+    )
+  posicion = 2
+  year = 2003
+  data_poblacion = data.frame()
+  for (i in colnames(poblacion_edad[2:14])) {
+    dataframe <- poblacion_edad[posicion]
+    dataframe$YEAR_DIAG <- year
+    dataframe$AGE_GROUP <- poblacion_edad$AGE_GROUP
+    dataframe = rename(dataframe, 'POB' = i)
+    posicion = posicion + 1
+    year = year + 1
+    data_poblacion <- rbind(data_poblacion, dataframe)
+  }  
+  return(data_poblacion)
+}
+
+#### CREAR EL MARCO DE DATOS PARA EL PROGRAMA DE JOINTPOINT
+data_joinpoint <- function(datos_incidencia, periodo, poblacion){
+  bd_ = datos_incidencia
+  #### Ambos sexos
+  bd_agrupada <- bd_ %>% group_by(YEAR_DIAG, AGE_GROUP) %>% count()
+  by_age_year <- completa_grupo_edad(periodo, bd_agrupada)
+  by_age_year$sex = 0
+  by_age_year <- merge(by_age_year, pob_estandar) %>% arrange(YEAR_DIAG, AGE_GROUP)
+  poblacion_agrupada <- datos_poblacion(poblacion)
+  data_jp <- merge(by_age_year, poblacion_agrupada, by = c('AGE_GROUP', 'YEAR_DIAG')) %>% 
+    arrange(YEAR_DIAG, AGE_GROUP)
+  ### Hombres
+  bd_hombres <- subset(bd_, SEXO == 1)
+  bd_agrupada_h <- bd_hombres %>% group_by(YEAR_DIAG, AGE_GROUP) %>% count()
+  by_age_year_h <- completa_grupo_edad(periodo, bd_agrupada_h)
+  by_age_year_h$sex = 1
+  by_age_year_h <- merge(by_age_year_h, pob_estandar) %>% arrange(YEAR_DIAG, AGE_GROUP)
+  poblacion_hombres <- subset(poblacion, Sexo == 1)
+  poblacion_agrupada_h <- datos_poblacion(poblacion_hombres)
+  data_jp_hombres <- merge(by_age_year_h, poblacion_agrupada_h, by = c('AGE_GROUP', 'YEAR_DIAG')) %>% 
+    arrange(YEAR_DIAG, AGE_GROUP)
+  ### Mujeres
+  bd_mujeres <- subset(bd_, SEXO == 2)
+  bd_agrupada_m <- bd_mujeres %>% group_by(YEAR_DIAG, AGE_GROUP) %>% count()
+  by_age_year_m <- completa_grupo_edad(periodo, bd_agrupada_m)
+  by_age_year_m$sex = 2
+  by_age_year_m <- merge(by_age_year_m, pob_estandar) %>% arrange(YEAR_DIAG, AGE_GROUP)
+  poblacion_mujeres <- subset(poblacion, Sexo == 2)
+  poblacion_agrupada_m <- datos_poblacion(poblacion_mujeres)
+  data_jp_mujeres <- merge(by_age_year_m, poblacion_agrupada_m, by = c('AGE_GROUP', 'YEAR_DIAG')) %>% 
+    arrange(YEAR_DIAG, AGE_GROUP)
+  data_joinpoint_total <- rbind(data_jp, data_jp_hombres, data_jp_mujeres)
+  return(data_joinpoint_total)
+}
+
+##############################################################################
+########################## Selección tipo de cancer ##########################
+##############################################################################
 cancer <- readline(prompt="Ingresar Cáncer a analizar: ")
 
 if (cancer == "vejiga"){
@@ -38,15 +152,14 @@ if (cancer == "vejiga"){
       MORF == 8323 | MORF == 8430 | MORF == 8480 | MORF == 8481 | MORF == 8490 | 
       MORF == 8550 | MORF == 8801 | MORF == 8890 | MORF == 8980  ~ 3)
   )
-} 
-else if (cancer == "pulmon") {
-  bd_pulmon <- bd %>% 
+} else if (cancer == "pulmon") {
+  bd_ <- bd %>% 
     filter(C10=="C340" | C10=="C341" | C10=="C342" | C10=="C343" | C10=="C348" 
            | C10=="C349") %>% 
     select(TUMOURID, NOCASO, FECNAC, EDAD, SEXO, REGCOM, FECDIAG,
            TOP, MORF, COMP, GRA, EXT, LAT, BASE, C10, PMSEC, PMTOT, FUE1, RUT)
   
-  bd_pulmon <- bd_pulmon %>% mutate(MORF_GRUPO = case_when(
+  bd_ <- bd_ %>% mutate(MORF_GRUPO = case_when(
     MORF == 8000 | MORF == 8001 | MORF == 8002 ~ 1,
     MORF == 8010 | MORF == 8012 | MORF == 8013 | MORF == 8021 | MORF == 8032 |
       MORF == 8033 | MORF == 8041 | MORF == 8042 | MORF == 8043 | MORF == 8044 |
@@ -59,8 +172,7 @@ else if (cancer == "pulmon") {
     MORF == 8430 | MORF == 8480 | MORF == 8481 | MORF == 8490 | MORF == 8550 | 
       MORF == 8800 | MORF == 8990 | MORF == 9050 | MORF == 8090 ~ 5)
   )
-} 
-else if (cancer == "piel") {
+} else if (cancer == "piel") {
   bd_ <- bd %>% 
     filter(C10=="C440" | C10=="C441" | C10=="C442" | C10=="C443" | C10=="C444" |
              C10=="C445" | C10=="C446" | C10=="C447" | C10=="C448" | 
@@ -81,7 +193,11 @@ else if (cancer == "piel") {
   )
 }
 
-################  Edad grupo
+##############################################################################
+############################# CREAR EDADES AGRUPADAS #########################
+##############################################################################
+
+#### En dataset incidencia
 bd_ <- bd_ %>% mutate(AGE_GROUP = case_when(
   EDAD >= 0 & EDAD <= 4 ~ 1,
   EDAD >= 5 & EDAD <= 9 ~ 2,
@@ -102,93 +218,7 @@ bd_ <- bd_ %>% mutate(AGE_GROUP = case_when(
   EDAD >= 80  ~ 17
 ))
 
-
-################  Año y mes diagnóstico
-year <- ""
-mes <- ""
-contador <- 1   
-for(i in bd_$FECDIAG){
-  year[[contador]] <- as.integer(str_sub(i, 1, 4))
-  mes[[contador]] <- as.integer(str_sub(i,5,6))
-  contador <- contador +  1
-}  
-
-bd_$YEAR_DIAG <- as.integer(year)
-bd_$MES_DIAG <- as.integer(mes)
-
-##############################################################################
-##############################################################################
-##############################################################################
-#######################  Región de Antofagasta
-##############################################################################
-##############################################################################
-##############################################################################
-by_age_year <- bd_ %>% group_by(YEAR_DIAG, AGE_GROUP) %>% count()
-by_age_year$sex = 0
-
-
-
-tiempo_estudio = c(2003, 2015)
-resta = tiempo_estudio[2] - tiempo_estudio[1]
-final = tiempo_estudio[1] + resta
-vector = 2003:final
-data_agrupada = data.frame()
-for (i in vector) {
-  vector_longitud = rep(i, 17)
-  if (nrow(subset(by_age_year, by_age_year$YEAR_DIAG == i)) < 17)
-    {
-    grupo_edad = c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17)
-    dataframe = subset(by_age_year, by_age_year$YEAR_DIAG == i)
-    #faltantes_ = grupo_edad[!grupo_edad %in% dataframe[2]]
-    for(a in dataframe[2])
-      faltantes = grupo_edad[!grupo_edad %in% a]
-      data = data.frame(YEAR_DIAG = i, 
-                        AGE_GROUP =  faltantes,
-                        n = 0) }
-  dataframe_ <- rbind(data, dataframe)
-  data_agrupada <- rbind(data_frame_, data_agrupada)
-}
-
-data_agrupada
-
-
-typeof(dataframe_)
-
-
-
-
-##### Agregar la poblacion estándar
-by_age_year = by_age_year %>% mutate(POB_STANDAR = case_when(
-  AGE_GROUP == 1 ~ 12000,
-  AGE_GROUP == 2 ~ 10000,
-  AGE_GROUP == 3 ~ 9000,
-  AGE_GROUP == 4 ~ 9000,
-  AGE_GROUP == 5 ~ 8000,
-  AGE_GROUP == 6 ~ 8000,
-  AGE_GROUP == 7 ~ 6000,
-  AGE_GROUP == 8 ~ 6000,
-  AGE_GROUP == 9 ~ 6000,
-  AGE_GROUP == 10 ~ 6000,
-  AGE_GROUP == 11 ~ 5000,
-  AGE_GROUP == 12 ~ 4000,
-  AGE_GROUP == 13 ~ 4000,
-  AGE_GROUP == 14 ~ 3000,
-  AGE_GROUP == 15 ~ 2000,
-  AGE_GROUP == 16 ~ 1000,
-  AGE_GROUP == 17 ~ 1000
-))
-
-############## CARGAR POBLACION INE
-if (Sys.info()[['sysname']] == "Darwin"){
-  #poblacion_ine <- read_delim("/Users/alvaro/Documents/Data_Science/R/proyecto_grado/cr5_18052022.txt", 
-  #delim = "\t", escape_double = FALSE, 
-  #trim_ws = TRUE)
-} else {
-  poblacion_ine <- read_excel("D:/Datasets/poblacion/pob_ine_censo2017_proyecciones.xlsx")
-}
-
-
-### AGE GROUP EN LA POBLACION INE
+### en sataset poblacion ine
 poblacion_ine <- poblacion_ine %>% mutate(AGE_GROUP = case_when(
   Edad >= 0 & Edad <= 4 ~ 1,
   Edad >= 5 & Edad <= 9 ~ 2,
@@ -209,50 +239,85 @@ poblacion_ine <- poblacion_ine %>% mutate(AGE_GROUP = case_when(
   Edad >= 80  ~ 17
 ))
 
-
-### SUBSET POBLACION ANTOFAGASTA
-poblacion <- as.data.frame(subset(poblacion_ine, Region == 2))
-
-### GROUPBY INE ANTOFAGASTA
-poblacion_edad <- as.data.frame(poblacion_antofagasta) %>% group_by(AGE_GROUP) %>% 
-  #(`Poblacion 2003`)
-  summarise(pob_2003 = sum(`Poblacion 2003`),
-            pob_2004 = sum(`Poblacion 2004`),
-            pob_2005 = sum(`Poblacion 2005`),
-            pob_2006 = sum(`Poblacion 2006`),
-            pob_2007 = sum(`Poblacion 2007`),
-            pob_2008 = sum(`Poblacion 2008`),
-            pob_2009 = sum(`Poblacion 2009`),
-            pob_2010 = sum(`Poblacion 2010`),
-            pob_2011 = sum(`Poblacion 2011`),
-            pob_2012 = sum(`Poblacion 2012`),
-            pob_2013 = sum(`Poblacion 2013`),
-            pob_2014 = sum(`Poblacion 2014`),
-            pob_2015 = sum(`Poblacion 2015`),
-  )
-
-posicion = 2
-year = 2003
-data_poblacion = data.frame()
-for (i in colnames(poblacion_edad[2:14])) {
-  dataframe <- poblacion_edad[posicion]
-  dataframe$YEAR_DIAG <- year
-  dataframe$AGE_GROUP <- poblacion_edad$AGE_GROUP
-  dataframe = rename(dataframe, 'POB' = i)
-  posicion = posicion + 1
-  year = year + 1
-  data_poblacion <- rbind(data_poblacion, dataframe)
+##############################################################################
+#############################  Año y mes diagnóstico ##########################
+##############################################################################
+year <- ""
+mes <- ""
+contador <- 1   
+for(i in bd_$FECDIAG){
+  year[[contador]] <- as.integer(str_sub(i, 1, 4))
+  mes[[contador]] <- as.integer(str_sub(i,5,6))
+  contador <- contador +  1
 }  
 
-data_jp <- merge(by_age_year, data_poblacion, by = c('AGE_GROUP', 'YEAR_DIAG'))
-data_jp <- data_jp %>% arrange(YEAR_DIAG, AGE_GROUP)
+bd_$YEAR_DIAG <- as.integer(year)
+bd_$MES_DIAG <- as.integer(mes)
 
-###Variable para jointpoint
-## Count
-## Population
-## age recode with < 1 year olds no unknowns
-## Std Population
-## Year of diagnosis
+##############################################################################
+####################### DATOS JP REGION DE ANTOFAGASTA #######################
+##############################################################################
+tiempo_estudio = c(2003, 2015)
+
+### SUBSETS 
+##### POBLACION ANTOFAGASTA
+poblacion <- as.data.frame(subset(poblacion_ine, Region == 2))
+
+joinpoint_reg_afta <- data_joinpoint(datos_incidencia = bd_, 
+                                    periodo = tiempo_estudio, 
+                                    poblacion = poblacion)
+
+##############################################################################
+####################### DATOS JP COMUNA DE ANTOFAGASTA #######################
+##############################################################################
+### SUBSETS 
+##### POBLACION COMUNA ANTOFAGASTA
+poblacion <- as.data.frame(subset(poblacion_ine, Comuna == 2101))
+
+#### INCIDENCIA COMUNA ANTOFAGASTA
+bd_comafta = subset(bd_, REGCOM = "02101")
+joinpoint_com_afta <- data_joinpoint(datos_incidencia = bd_comafta,
+                                     periodo = tiempo_estudio, 
+                                     poblacion = poblacion)
+
+##############################################################################
+####################### DATOS JP COMUNA DE CALAMA ############################
+##############################################################################
+### SUBSETS 
+##### POBLACION COMUNA CALAMA
+poblacion <- as.data.frame(subset(poblacion_ine, Comuna == 2201))
+
+#### INCIDENCIA COMUNA CALAMA
+bd_comcalama = subset(bd_, REGCOM = "02201")
+joinpoint_com_calama <- data_joinpoint(datos_incidencia = bd_comcalama,
+                                     periodo = tiempo_estudio, 
+                                     poblacion = poblacion)
+
+##############################################################################
+####################### DATOS JP COMUNA DE TOCOPILLA #########################
+##############################################################################
+### SUBSETS 
+##### POBLACION COMUNA TOCOPILLA
+poblacion <- as.data.frame(subset(poblacion_ine, Comuna == 2301))
+
+#### INCIDENCIA COMUNA TOCOPILLA
+bd_comtocopilla = subset(bd_, REGCOM = "02301")
+joinpoint_com_tocopilla <- data_joinpoint(datos_incidencia = bd_comtocopilla,
+                                     periodo = tiempo_estudio, 
+                                     poblacion = poblacion)
+
+##############################################################################
+################################ DATOS A CSV ###############################
+##############################################################################
+write_csv(joinpoint_reg_afta, 
+          file = "/Users/alvaro/Documents/Data_Science/R/proyecto_grado/jointpoint/jp_reg_afta.csv")
+write_csv(joinpoint_com_afta, 
+          file = "/Users/alvaro/Documents/Data_Science/R/proyecto_grado/jointpoint/jp_com_afta.csv")
+write_csv(joinpoint_com_calama, 
+          file = "/Users/alvaro/Documents/Data_Science/R/proyecto_grado/jointpoint/jp_com_calama.csv")
+write_csv(joinpoint_com_tocopilla, 
+          file = "/Users/alvaro/Documents/Data_Science/R/proyecto_grado/jointpoint/jp_com_tocopilla.csv")
+
 
 
 
