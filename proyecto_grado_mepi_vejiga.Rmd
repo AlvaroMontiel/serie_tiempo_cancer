@@ -9,6 +9,9 @@ output:
     - "style-2.css"
   pdf_document: default
 ---
+```{r}
+
+```
 
 ```{r, carga de archivos, echo=FALSE, include=FALSE}
 library(readr)
